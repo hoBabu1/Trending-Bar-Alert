@@ -51,7 +51,16 @@ TELEGRAM_MSG_DELAY = 0.5        # seconds between Telegram messages (rate limit)
 STATE_FILE = "alert_state.json" # persists which streaks we already alerted on
 SEND_SCAN_SUMMARY = True        # send a Telegram summary after every scan (heartbeat)
 
-BINANCE_KLINES_URL = "https://api.binance.com/api/v3/klines"
+# Bybit is used instead of Binance because Binance returns HTTP 451 (geo-block)
+# from cloud/data-center IPs such as GitHub Actions runners. Bybit exposes the
+# same SYMBOLUSDT spot markets and is reachable from those hosts.
+BYBIT_KLINES_URL = "https://api.bybit.com/v5/market/kline"
+# Map our human-readable timeframes to Bybit interval codes (minutes).
+BYBIT_INTERVALS = {
+    "1m": "1", "3m": "3", "5m": "5", "15m": "15", "30m": "30",
+    "1h": "60", "2h": "120", "4h": "240", "6h": "360", "12h": "720",
+    "1d": "D", "1w": "W",
+}
 TELEGRAM_API_BASE = "https://api.telegram.org/bot{token}/sendMessage"
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -136,35 +145,51 @@ def send_telegram(text):
 
 
 # --------------------------------------------------------------------------- #
-# Binance data
+# Market data (Bybit)
 # --------------------------------------------------------------------------- #
 def fetch_candles(symbol, timeframe, limit=CANDLE_LIMIT):
     """
-    Fetch klines from Binance. Returns a list of dicts with open/close/close_time
-    for CLOSED candles only (the last, still-forming candle is dropped).
-    Returns None on failure.
+    Fetch spot klines from Bybit. Returns a list of dicts with open/close/
+    close_time for CLOSED candles only (the last, still-forming candle is
+    dropped). Returns None on failure.
     """
+    interval = BYBIT_INTERVALS.get(timeframe)
+    if interval is None:
+        log.error("Unsupported timeframe %s (no Bybit interval mapping).", timeframe)
+        return None
     try:
         resp = requests.get(
-            BINANCE_KLINES_URL,
-            params={"symbol": symbol, "interval": timeframe, "limit": limit},
+            BYBIT_KLINES_URL,
+            params={
+                "category": "spot",
+                "symbol": symbol,
+                "interval": interval,
+                "limit": limit,
+            },
             timeout=15,
         )
         resp.raise_for_status()
-        raw = resp.json()
+        payload = resp.json()
+        if payload.get("retCode") != 0:
+            raise RuntimeError(payload.get("retMsg", "unknown Bybit error"))
+        raw = payload["result"]["list"]
     except Exception as exc:  # noqa: BLE001
         log.error("Failed to fetch candles for %s %s: %s", symbol, timeframe, exc)
         return None
 
-    # Binance kline format: [open_time, open, high, low, close, volume,
-    #                        close_time, ...]
+    # Bybit kline format (strings): [startTime, open, high, low, close,
+    # volume, turnover]. The list is newest-first, so reverse to oldest-first.
     candles = []
-    for k in raw:
+    for k in reversed(raw):
+        start_ms = int(k[0])
         candles.append(
             {
                 "open": float(k[1]),
                 "close": float(k[4]),
-                "close_time": int(k[6]),  # ms
+                # Bybit gives candle START time; close_time = start + interval.
+                "close_time": start_ms + int(interval) * 60_000
+                if interval.isdigit()
+                else start_ms,
             }
         )
 
