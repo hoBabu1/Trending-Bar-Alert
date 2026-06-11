@@ -71,7 +71,12 @@ KRAKEN_INTERVALS = {
 TELEGRAM_API_BASE = "https://api.telegram.org/bot{token}/sendMessage"
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+# TELEGRAM_CHAT_ID can be a single id or several comma-separated ids, e.g.
+# "123456789" or "123456789,987654321" — every id gets the same messages.
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+TELEGRAM_CHAT_IDS = [
+    cid.strip() for cid in (TELEGRAM_CHAT_ID or "").split(",") if cid.strip()
+]
 
 # --------------------------------------------------------------------------- #
 # Logging
@@ -127,28 +132,33 @@ def save_state():
 # Telegram
 # --------------------------------------------------------------------------- #
 def send_telegram(text):
-    """Send an HTML message to Telegram. Returns True on success."""
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+    """
+    Send an HTML message to every chat id in TELEGRAM_CHAT_IDS.
+    Returns True if it reached at least one chat.
+    """
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_IDS:
         log.error("Telegram credentials missing; cannot send message.")
         return False
-    try:
-        url = TELEGRAM_API_BASE.format(token=TELEGRAM_BOT_TOKEN)
-        resp = requests.post(
-            url,
-            data={
-                "chat_id": TELEGRAM_CHAT_ID,
-                "text": text,
-                "parse_mode": "HTML",
-                "disable_web_page_preview": True,
-            },
-            timeout=15,
-        )
-        resp.raise_for_status()
-        time.sleep(TELEGRAM_MSG_DELAY)  # gentle rate limiting
-        return True
-    except Exception as exc:  # noqa: BLE001 - never crash the loop on send failure
-        log.error("Failed to send Telegram message: %s", exc)
-        return False
+    url = TELEGRAM_API_BASE.format(token=TELEGRAM_BOT_TOKEN)
+    sent_any = False
+    for chat_id in TELEGRAM_CHAT_IDS:
+        try:
+            resp = requests.post(
+                url,
+                data={
+                    "chat_id": chat_id,
+                    "text": text,
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": True,
+                },
+                timeout=15,
+            )
+            resp.raise_for_status()
+            sent_any = True
+            time.sleep(TELEGRAM_MSG_DELAY)  # gentle rate limiting
+        except Exception as exc:  # noqa: BLE001 - one bad chat shouldn't stop others
+            log.error("Failed to send Telegram message to %s: %s", chat_id, exc)
+    return sent_any
 
 
 # --------------------------------------------------------------------------- #
@@ -366,7 +376,7 @@ def run_scan():
 
 
 def _require_credentials():
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_IDS:
         log.error(
             "TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set as environment "
             "variables. Exiting."
