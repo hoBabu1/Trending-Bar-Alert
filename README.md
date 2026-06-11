@@ -1,14 +1,20 @@
 # 🕯 Crypto Candle Streak Telegram Alert Bot
 
-A lightweight Python bot that watches Binance and sends you a **Telegram alert**
+A lightweight Python bot that watches the market and sends you a **Telegram alert**
 whenever a coin prints **5 or more consecutive green or red closed candles** on a
 given timeframe. It keeps alerting as the streak grows (5th → 6th → 7th candle…)
-and stops once the streak breaks.
+and stops once the streak breaks. After every scan it also sends a compact
+**heartbeat summary** so you always know it's alive.
 
 - **Coins:** BTC, SOL, XRP, UNI, AVAX
 - **Timeframes:** 30m, 1h, 4h
-- **Data source:** Binance public REST API (no API key required)
+- **Data source:** Kraken public REST API (no API key required)
 - **Dependencies:** just `requests`
+
+> ℹ️ **Why Kraken?** Binance (HTTP 451) and Bybit (HTTP 403) geo-block requests
+> from US cloud / data-center IPs, which is where free hosts like GitHub Actions
+> run. Kraken is reachable from those hosts and supports the 30m / 1h / 4h
+> timeframes this bot uses.
 
 ---
 
@@ -50,37 +56,54 @@ On startup you'll get:
 
 ---
 
-## 4. Deploy on Render.com
+## 4. Deploy on GitHub Actions (free, recommended)
 
-This bot runs as a **Background Worker** (no web server / no open port).
+The bot ships with a scheduled workflow at
+[.github/workflows/candle-alert.yml](.github/workflows/candle-alert.yml) that
+runs a single scan every 30 minutes — no server and no monthly cost. It runs the
+script in `--once` mode and persists `alert_state.json` back to the repo so you
+only get alerted when a streak is **new or grows** (no duplicate spam across runs).
 
 1. Push this folder to a GitHub repository.
-2. Go to [Render.com](https://render.com) → **New** → **Background Worker**.
-3. Connect your GitHub repo.
-4. Render auto-detects `render.yaml`. If asked manually, set:
-   - **Runtime:** Python
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `python candle_alert_bot.py`
-5. Create the service.
+2. In your repo, go to **Settings → Secrets and variables → Actions**.
+3. Under **Repository secrets** (not *Environment* secrets), click
+   **New repository secret** and add both:
 
-### Set environment variables on Render
+   | Name                 | Value                |
+   | -------------------- | -------------------- |
+   | `TELEGRAM_BOT_TOKEN` | your BotFather token |
+   | `TELEGRAM_CHAT_ID`   | your numeric chat id |
 
-In the service dashboard → **Environment** → **Add Environment Variable**:
+4. Go to the **Actions** tab → **Candle Streak Alert** → **Run workflow** to test
+   it immediately (otherwise it runs automatically on the 30-minute schedule).
 
-| Key                  | Value                          |
-| -------------------- | ------------------------------ |
-| `TELEGRAM_BOT_TOKEN` | your BotFather token           |
-| `TELEGRAM_CHAT_ID`   | your numeric chat id           |
-
-Save — Render will redeploy automatically.
-
-> ⚠️ **Free tier note:** Render's free plan does **not** support always-on
-> background workers (they spin down). To keep the bot running 24/7 you need the
-> **Starter plan (~$7/month)**.
+> ⏱ **Schedule note:** On GitHub Actions the scan frequency is controlled by the
+> `cron` line in the workflow file (`*/30 * * * *`), **not** the `CHECK_INTERVAL`
+> variable. GitHub may delay scheduled runs by a few minutes under load, and
+> auto-pauses schedules after 60 days of repo inactivity (a single run re-enables
+> them).
 
 ---
 
-## 5. Example alert
+## 4b. Alternative: deploy on Render.com (always-on, paid)
+
+Prefer a continuously running process instead of a cron? Deploy the **Background
+Worker** defined in `render.yaml`. In this mode the script runs forever
+(`python candle_alert_bot.py`, no `--once`) and uses `CHECK_INTERVAL`.
+
+1. [Render.com](https://render.com) → **New** → **Background Worker** → connect your repo.
+2. Render auto-detects `render.yaml` (runtime, build/start commands, Starter plan).
+3. In the service dashboard → **Environment**, add `TELEGRAM_BOT_TOKEN` and
+   `TELEGRAM_CHAT_ID`. Save — Render redeploys automatically.
+
+> ⚠️ Render's free plan does **not** support always-on workers (they spin down).
+> Keeping it running 24/7 needs the **Starter plan (~$7/month)**.
+
+---
+
+## 5. What you'll receive in Telegram
+
+**A) Streak alert** — only when a coin hits a 5+ streak or it grows:
 
 ```
 🟢 Candle Streak Alert!
@@ -92,6 +115,22 @@ Save — Render will redeploy automatically.
 🕒 Time (UTC): 2024-01-15 14:00
 ```
 
+**B) Heartbeat summary** — after every scan, so you know the bot is alive:
+
+```
+🔍 Scan complete — 2024-01-15 14:00 UTC
+
+BTC: 30m 1🔴 | 1h 1🟢 | 4h 1🟢
+SOL: 30m 1🔴 | 1h 1🟢 | 4h 1🟢
+XRP: 30m 1🔴 | 1h 1🟢 | 4h 1🟢
+UNI: 30m 1🔴 | 1h 5🟢⭐ | 4h 1🟢
+AVAX: 30m 1🔴 | 1h 1🟢 | 4h 1🟢
+```
+
+Each entry is `timeframe streak-length color`. ⭐ marks a streak that has hit the
+alert threshold; ⚪ means a doji (no clear color). Turn the heartbeat off by
+setting `SEND_SCAN_SUMMARY = False` at the top of the script.
+
 ---
 
 ## 6. Customize
@@ -101,15 +140,21 @@ All settings live at the top of [candle_alert_bot.py](candle_alert_bot.py):
 ```python
 SYMBOLS = ["BTCUSDT", "SOLUSDT", "XRPUSDT", "UNIUSDT", "AVAXUSDT"]
 TIMEFRAMES = ["30m", "1h", "4h"]
-MIN_STREAK = 5            # alert threshold
-CHECK_INTERVAL = 30 * 60  # scan frequency in seconds
+MIN_STREAK = 5             # alert threshold
+CHECK_INTERVAL = 30 * 60   # scan frequency in seconds (Render/local loop only)
+SEND_SCAN_SUMMARY = True   # send the heartbeat summary after every scan
 ```
 
-- **Add/remove coins:** edit `SYMBOLS` (use Binance symbols, e.g. `"DOGEUSDT"`).
-- **Change timeframes:** edit `TIMEFRAMES` (Binance intervals: `1m`, `5m`, `15m`,
-  `30m`, `1h`, `2h`, `4h`, `1d`, …).
+- **Add/remove coins:** edit `SYMBOLS`, then add the Kraken pair mapping in
+  `KRAKEN_PAIRS` (e.g. `"DOGEUSDT": "DOGEUSD"`). Kraken uses `XBT` for BTC.
+- **Change timeframes:** edit `TIMEFRAMES` using values present in
+  `KRAKEN_INTERVALS` (`1m`, `5m`, `15m`, `30m`, `1h`, `4h`, `1d`).
 - **Change streak length:** set `MIN_STREAK` (e.g. `3` for shorter streaks).
-- **Change scan frequency:** set `CHECK_INTERVAL` (in seconds).
+- **Change scan frequency:**
+  - On **GitHub Actions**, edit the `cron` in the workflow file (e.g.
+    `0 * * * *` for hourly).
+  - On **Render / local loop**, set `CHECK_INTERVAL` (in seconds).
+- **Mute the heartbeat:** set `SEND_SCAN_SUMMARY = False` (keeps streak alerts).
 
 ---
 
