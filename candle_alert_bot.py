@@ -49,6 +49,7 @@ CHECK_INTERVAL = 30 * 60        # seconds between full scans (30 minutes)
 CANDLE_LIMIT = 50               # how many candles to fetch per request
 TELEGRAM_MSG_DELAY = 0.5        # seconds between Telegram messages (rate limit)
 STATE_FILE = "alert_state.json" # persists which streaks we already alerted on
+SEND_SCAN_SUMMARY = True        # send a Telegram summary after every scan (heartbeat)
 
 BINANCE_KLINES_URL = "https://api.binance.com/api/v3/klines"
 TELEGRAM_API_BASE = "https://api.telegram.org/bot{token}/sendMessage"
@@ -288,17 +289,47 @@ def check_symbol_timeframe(symbol, timeframe, dry_run=False):
     return color, length
 
 
+def build_summary_message(results):
+    """
+    Build a compact heartbeat message of every coin/timeframe result.
+    `results` is a dict: (symbol, timeframe) -> (color, length).
+    """
+    now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M")
+    lines = [f"🔍 <b>Scan complete</b> — {now} UTC\n"]
+    for symbol in SYMBOLS:
+        parts = []
+        for timeframe in TIMEFRAMES:
+            color, length = results.get((symbol, timeframe), (None, 0))
+            if color == "green":
+                emoji = "🟢"
+            elif color == "red":
+                emoji = "🔴"
+            else:
+                emoji = "⚪"
+            # ⭐ marks a streak that hit the alert threshold
+            star = "⭐" if (color and length >= MIN_STREAK) else ""
+            parts.append(f"{timeframe} {length}{emoji}{star}")
+        lines.append(f"<b>{coin_name(symbol)}</b>: " + " | ".join(parts))
+    return "\n".join(lines)
+
+
 def run_scan():
     """Run one full scan over all symbols and timeframes (state is persisted)."""
     log.info("=== Starting scan ===")
     load_state()
+    results = {}
     for symbol in SYMBOLS:
         for timeframe in TIMEFRAMES:
             try:
-                check_symbol_timeframe(symbol, timeframe)
+                color, length = check_symbol_timeframe(symbol, timeframe)
+                results[(symbol, timeframe)] = (color, length)
             except Exception as exc:  # noqa: BLE001 - isolate per-check failures
                 log.error("Error checking %s %s: %s", symbol, timeframe, exc)
     save_state()
+
+    if SEND_SCAN_SUMMARY and results:
+        send_telegram(build_summary_message(results))
+        log.info("Scan summary sent to Telegram.")
     log.info("=== Scan complete ===")
 
 
