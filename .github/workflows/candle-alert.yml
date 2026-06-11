@@ -2,10 +2,10 @@ name: Candle Streak Alert
 
 on:
   schedule:
-    # TESTING: every 5 minutes (GitHub's minimum interval) to confirm the
-    # schedule fires at all. Switch back to "7,37 * * * *" (~30 min, off-peak)
-    # once verified.
-    - cron: "*/5 * * * *"
+    # Best-effort backup only. GitHub's scheduler is unreliable (and throttled
+    # on new free accounts), so the real 30-min trigger comes from an external
+    # cron (cron-job.org) hitting the workflow_dispatch API. Off-peak minutes.
+    - cron: "7,37 * * * *"
   workflow_dispatch: {}   # lets you run it manually from the Actions tab
 
 # Needed so the job can commit the updated alert_state.json back to the repo.
