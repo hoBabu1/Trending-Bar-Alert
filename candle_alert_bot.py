@@ -8,6 +8,8 @@ same color. Re-alerts on every new candle that extends an active streak.
 """
 
 import os
+import sys
+import json
 import time
 import logging
 from datetime import datetime, timezone
@@ -46,6 +48,7 @@ MIN_STREAK = 5                  # alert when this many same-color candles in a r
 CHECK_INTERVAL = 30 * 60        # seconds between full scans (30 minutes)
 CANDLE_LIMIT = 50               # how many candles to fetch per request
 TELEGRAM_MSG_DELAY = 0.5        # seconds between Telegram messages (rate limit)
+STATE_FILE = "alert_state.json" # persists which streaks we already alerted on
 
 BINANCE_KLINES_URL = "https://api.binance.com/api/v3/klines"
 TELEGRAM_API_BASE = "https://api.telegram.org/bot{token}/sendMessage"
@@ -66,7 +69,41 @@ log = logging.getLogger("candle_alert_bot")
 # Tracks the last streak length we already alerted on, so we only send a new
 # message when the streak grows (5 -> 6 -> 7 ...) and reset when it breaks.
 # Key: (symbol, timeframe) -> (color, last_alerted_length)
+# Persisted to STATE_FILE so it survives across separate cron runs.
 _alert_state = {}
+
+
+def _state_key_str(symbol, timeframe):
+    """JSON keys must be strings, so flatten the (symbol, timeframe) tuple."""
+    return f"{symbol}|{timeframe}"
+
+
+def load_state():
+    """Load alert state from STATE_FILE into _alert_state."""
+    _alert_state.clear()
+    if not os.path.exists(STATE_FILE):
+        return
+    try:
+        with open(STATE_FILE) as fh:
+            data = json.load(fh)
+        for key_str, value in data.items():
+            symbol, _, timeframe = key_str.partition("|")
+            _alert_state[(symbol, timeframe)] = (value["color"], value["length"])
+    except Exception as exc:  # noqa: BLE001 - corrupt state shouldn't crash the bot
+        log.error("Could not read %s (%s); starting fresh.", STATE_FILE, exc)
+
+
+def save_state():
+    """Write _alert_state back to STATE_FILE."""
+    try:
+        data = {
+            _state_key_str(sym, tf): {"color": color, "length": length}
+            for (sym, tf), (color, length) in _alert_state.items()
+        }
+        with open(STATE_FILE, "w") as fh:
+            json.dump(data, fh, indent=2)
+    except Exception as exc:  # noqa: BLE001
+        log.error("Could not write %s: %s", STATE_FILE, exc)
 
 
 # --------------------------------------------------------------------------- #
@@ -252,18 +289,20 @@ def check_symbol_timeframe(symbol, timeframe, dry_run=False):
 
 
 def run_scan():
-    """Run one full scan over all symbols and timeframes."""
+    """Run one full scan over all symbols and timeframes (state is persisted)."""
     log.info("=== Starting scan ===")
+    load_state()
     for symbol in SYMBOLS:
         for timeframe in TIMEFRAMES:
             try:
                 check_symbol_timeframe(symbol, timeframe)
             except Exception as exc:  # noqa: BLE001 - isolate per-check failures
                 log.error("Error checking %s %s: %s", symbol, timeframe, exc)
+    save_state()
     log.info("=== Scan complete ===")
 
 
-def main():
+def _require_credentials():
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         log.error(
             "TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set as environment "
@@ -271,6 +310,18 @@ def main():
         )
         raise SystemExit(1)
 
+
+def run_once():
+    """Single scan then exit — used by GitHub Actions / cron schedulers."""
+    _require_credentials()
+    log.info("Running single scan (--once mode).")
+    run_scan()
+    log.info("Single scan finished. Exiting.")
+
+
+def run_forever():
+    """Infinite loop with built-in sleep — used for always-on hosts / local."""
+    _require_credentials()
     startup = (
         "🤖 Candle Alert Bot is live! Monitoring BTC, SOL, XRP, UNI, AVAX "
         "on 30m / 1h / 4h."
@@ -288,4 +339,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # `--once` = run one scan and exit (GitHub Actions / cron).
+    # no args  = run forever (Render worker / local machine).
+    if "--once" in sys.argv:
+        run_once()
+    else:
+        run_forever()
