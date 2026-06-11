@@ -51,15 +51,22 @@ TELEGRAM_MSG_DELAY = 0.5        # seconds between Telegram messages (rate limit)
 STATE_FILE = "alert_state.json" # persists which streaks we already alerted on
 SEND_SCAN_SUMMARY = True        # send a Telegram summary after every scan (heartbeat)
 
-# Bybit is used instead of Binance because Binance returns HTTP 451 (geo-block)
-# from cloud/data-center IPs such as GitHub Actions runners. Bybit exposes the
-# same SYMBOLUSDT spot markets and is reachable from those hosts.
-BYBIT_KLINES_URL = "https://api.bybit.com/v5/market/kline"
-# Map our human-readable timeframes to Bybit interval codes (minutes).
-BYBIT_INTERVALS = {
-    "1m": "1", "3m": "3", "5m": "5", "15m": "15", "30m": "30",
-    "1h": "60", "2h": "120", "4h": "240", "6h": "360", "12h": "720",
-    "1d": "D", "1w": "W",
+# Kraken is used as the data source because Binance (HTTP 451) and Bybit
+# (HTTP 403) both geo-block US cloud/data-center IPs such as GitHub Actions
+# runners. Kraken is reachable from those hosts and supports 30m/1h/4h.
+KRAKEN_OHLC_URL = "https://api.kraken.com/0/public/OHLC"
+# Map our SYMBOLUSDT config names to Kraken USD pair names.
+KRAKEN_PAIRS = {
+    "BTCUSDT": "XBTUSD",
+    "SOLUSDT": "SOLUSD",
+    "XRPUSDT": "XRPUSD",
+    "UNIUSDT": "UNIUSD",
+    "AVAXUSDT": "AVAXUSD",
+}
+# Map our human-readable timeframes to Kraken interval codes (minutes).
+KRAKEN_INTERVALS = {
+    "1m": 1, "5m": 5, "15m": 15, "30m": 30,
+    "1h": 60, "4h": 240, "1d": 1440,
 }
 TELEGRAM_API_BASE = "https://api.telegram.org/bot{token}/sendMessage"
 
@@ -145,51 +152,51 @@ def send_telegram(text):
 
 
 # --------------------------------------------------------------------------- #
-# Market data (Bybit)
+# Market data (Kraken)
 # --------------------------------------------------------------------------- #
 def fetch_candles(symbol, timeframe, limit=CANDLE_LIMIT):
     """
-    Fetch spot klines from Bybit. Returns a list of dicts with open/close/
+    Fetch OHLC candles from Kraken. Returns a list of dicts with open/close/
     close_time for CLOSED candles only (the last, still-forming candle is
     dropped). Returns None on failure.
     """
-    interval = BYBIT_INTERVALS.get(timeframe)
+    pair = KRAKEN_PAIRS.get(symbol)
+    interval = KRAKEN_INTERVALS.get(timeframe)
+    if pair is None:
+        log.error("Unsupported symbol %s (no Kraken pair mapping).", symbol)
+        return None
     if interval is None:
-        log.error("Unsupported timeframe %s (no Bybit interval mapping).", timeframe)
+        log.error("Unsupported timeframe %s (no Kraken interval mapping).", timeframe)
         return None
     try:
         resp = requests.get(
-            BYBIT_KLINES_URL,
-            params={
-                "category": "spot",
-                "symbol": symbol,
-                "interval": interval,
-                "limit": limit,
-            },
+            KRAKEN_OHLC_URL,
+            params={"pair": pair, "interval": interval},
             timeout=15,
         )
         resp.raise_for_status()
         payload = resp.json()
-        if payload.get("retCode") != 0:
-            raise RuntimeError(payload.get("retMsg", "unknown Bybit error"))
-        raw = payload["result"]["list"]
+        if payload.get("error"):
+            raise RuntimeError(", ".join(payload["error"]))
+        result = payload["result"]
+        # Kraken returns data under a normalized pair key (e.g. XXBTZUSD)
+        # alongside a "last" field — grab whichever key isn't "last".
+        data_key = next(k for k in result if k != "last")
+        raw = result[data_key]
     except Exception as exc:  # noqa: BLE001
         log.error("Failed to fetch candles for %s %s: %s", symbol, timeframe, exc)
         return None
 
-    # Bybit kline format (strings): [startTime, open, high, low, close,
-    # volume, turnover]. The list is newest-first, so reverse to oldest-first.
+    # Kraken OHLC row: [time, open, high, low, close, vwap, volume, count].
+    # time is the candle START in seconds; list is oldest-first.
     candles = []
-    for k in reversed(raw):
-        start_ms = int(k[0])
+    for k in raw[-limit:]:
+        start_s = int(k[0])
         candles.append(
             {
                 "open": float(k[1]),
                 "close": float(k[4]),
-                # Bybit gives candle START time; close_time = start + interval.
-                "close_time": start_ms + int(interval) * 60_000
-                if interval.isdigit()
-                else start_ms,
+                "close_time": (start_s + interval * 60) * 1000,  # ms
             }
         )
 
