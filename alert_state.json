@@ -1,22 +1,6 @@
 {
   "UNIUSDT|30m": {
     "color": "red",
-    "length": 6
-  },
-  "BTCUSDT|30m": {
-    "color": "red",
-    "length": 5
-  },
-  "SOLUSDT|30m": {
-    "color": "red",
-    "length": 5
-  },
-  "XRPUSDT|30m": {
-    "color": "red",
-    "length": 5
-  },
-  "AVAXUSDT|30m": {
-    "color": "red",
-    "length": 5
+    "length": 7
   }
 }
