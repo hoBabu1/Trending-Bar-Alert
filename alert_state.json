@@ -6,5 +6,9 @@
   "XRPUSDT|4h": {
     "color": "green",
     "length": 5
+  },
+  "BTCUSDT|30m": {
+    "color": "green",
+    "length": 5
   }
 }
