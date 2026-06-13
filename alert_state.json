@@ -1,10 +1,6 @@
 {
-  "AVAXUSDT|1h": {
-    "color": "red",
-    "length": 6
-  },
   "UNIUSDT|1h": {
     "color": "red",
-    "length": 5
+    "length": 6
   }
 }
