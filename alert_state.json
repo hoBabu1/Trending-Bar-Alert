@@ -3,7 +3,11 @@
     "color": "red",
     "length": 5
   },
-  "UNIUSDT|30m": {
+  "XRPUSDT|30m": {
+    "color": "green",
+    "length": 5
+  },
+  "AVAXUSDT|30m": {
     "color": "green",
     "length": 5
   }
