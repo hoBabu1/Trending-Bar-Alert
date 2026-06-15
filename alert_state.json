@@ -1,14 +1,10 @@
 {
   "XRPUSDT|1h": {
     "color": "green",
-    "length": 8
+    "length": 9
   },
   "SOLUSDT|1h": {
     "color": "green",
-    "length": 6
-  },
-  "SOLUSDT|30m": {
-    "color": "green",
-    "length": 5
+    "length": 7
   }
 }
