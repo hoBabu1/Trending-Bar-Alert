@@ -3,8 +3,8 @@
     "color": "green",
     "length": 7
   },
-  "SOLUSDT|30m": {
+  "XRPUSDT|30m": {
     "color": "red",
-    "length": 6
+    "length": 5
   }
 }
