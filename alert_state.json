@@ -2,5 +2,9 @@
   "UNIUSDT|4h": {
     "color": "green",
     "length": 7
+  },
+  "UNIUSDT|1h": {
+    "color": "green",
+    "length": 5
   }
 }
