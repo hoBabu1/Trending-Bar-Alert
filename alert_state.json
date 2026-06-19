@@ -1,8 +1,4 @@
 {
-  "UNIUSDT|30m": {
-    "color": "red",
-    "length": 6
-  },
   "UNIUSDT|1h": {
     "color": "red",
     "length": 5
