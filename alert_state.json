@@ -1,14 +1,1 @@
-{
-  "SOLUSDT|4h": {
-    "color": "green",
-    "length": 5
-  },
-  "XRPUSDT|4h": {
-    "color": "green",
-    "length": 5
-  },
-  "UNIUSDT|30m": {
-    "color": "red",
-    "length": 5
-  }
-}
+{}
