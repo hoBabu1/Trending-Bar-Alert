@@ -1,9 +1,17 @@
 {
   "SOLUSDT|30m": {
     "color": "green",
-    "length": 6
+    "length": 7
   },
   "BTCUSDT|30m": {
+    "color": "green",
+    "length": 6
+  },
+  "UNIUSDT|30m": {
+    "color": "green",
+    "length": 5
+  },
+  "AVAXUSDT|30m": {
     "color": "green",
     "length": 5
   }
