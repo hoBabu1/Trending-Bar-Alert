@@ -1,14 +1,6 @@
 {
-  "AVAXUSDT|30m": {
-    "color": "green",
-    "length": 8
-  },
-  "SOLUSDT|1h": {
+  "AVAXUSDT|1h": {
     "color": "green",
     "length": 5
-  },
-  "UNIUSDT|30m": {
-    "color": "green",
-    "length": 6
   }
 }
