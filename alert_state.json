@@ -1,6 +1,14 @@
 {
   "XRPUSDT|30m": {
     "color": "green",
-    "length": 6
+    "length": 7
+  },
+  "SOLUSDT|30m": {
+    "color": "green",
+    "length": 5
+  },
+  "UNIUSDT|30m": {
+    "color": "green",
+    "length": 5
   }
 }
