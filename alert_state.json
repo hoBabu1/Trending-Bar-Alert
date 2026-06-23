@@ -1,10 +1,6 @@
 {
-  "BTCUSDT|1h": {
-    "color": "red",
-    "length": 8
-  },
   "XRPUSDT|4h": {
     "color": "red",
-    "length": 5
+    "length": 6
   }
 }
