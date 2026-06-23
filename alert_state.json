@@ -1,13 +1,21 @@
 {
   "BTCUSDT|1h": {
     "color": "red",
-    "length": 5
+    "length": 6
   },
   "XRPUSDT|1h": {
     "color": "red",
-    "length": 5
+    "length": 6
   },
   "XRPUSDT|4h": {
+    "color": "red",
+    "length": 5
+  },
+  "SOLUSDT|1h": {
+    "color": "red",
+    "length": 5
+  },
+  "AVAXUSDT|1h": {
     "color": "red",
     "length": 5
   }
