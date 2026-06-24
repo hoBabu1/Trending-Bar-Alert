@@ -1,1 +1,10 @@
-{}
+{
+  "BTCUSDT|1h": {
+    "color": "red",
+    "length": 5
+  },
+  "SOLUSDT|1h": {
+    "color": "red",
+    "length": 5
+  }
+}
