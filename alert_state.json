@@ -1,1 +1,10 @@
-{}
+{
+  "SOLUSDT|30m": {
+    "color": "green",
+    "length": 5
+  },
+  "XRPUSDT|30m": {
+    "color": "green",
+    "length": 5
+  }
+}
