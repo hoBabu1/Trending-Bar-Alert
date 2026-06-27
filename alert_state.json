@@ -1,14 +1,14 @@
 {
   "BTCUSDT|30m": {
     "color": "green",
-    "length": 6
+    "length": 7
   },
   "XRPUSDT|30m": {
     "color": "green",
-    "length": 6
+    "length": 7
   },
-  "UNIUSDT|30m": {
+  "UNIUSDT|1h": {
     "color": "green",
-    "length": 6
+    "length": 5
   }
 }
