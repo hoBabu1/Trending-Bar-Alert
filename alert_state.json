@@ -2,9 +2,5 @@
   "SOLUSDT|1h": {
     "color": "green",
     "length": 6
-  },
-  "AVAXUSDT|30m": {
-    "color": "green",
-    "length": 5
   }
 }
