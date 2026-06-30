@@ -2,13 +2,5 @@
   "XRPUSDT|1h": {
     "color": "red",
     "length": 6
-  },
-  "BTCUSDT|30m": {
-    "color": "red",
-    "length": 6
-  },
-  "XRPUSDT|30m": {
-    "color": "red",
-    "length": 6
   }
 }
