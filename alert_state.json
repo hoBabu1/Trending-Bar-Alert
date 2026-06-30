@@ -1,1 +1,6 @@
-{}
+{
+  "SOLUSDT|30m": {
+    "color": "red",
+    "length": 5
+  }
+}
