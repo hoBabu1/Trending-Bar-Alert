@@ -1,1 +1,6 @@
-{}
+{
+  "AVAXUSDT|30m": {
+    "color": "green",
+    "length": 5
+  }
+}
