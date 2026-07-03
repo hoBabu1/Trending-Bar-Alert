@@ -3,11 +3,7 @@
     "color": "green",
     "length": 6
   },
-  "BTCUSDT|1h": {
-    "color": "green",
-    "length": 5
-  },
-  "SOLUSDT|1h": {
+  "AVAXUSDT|1h": {
     "color": "green",
     "length": 5
   }
