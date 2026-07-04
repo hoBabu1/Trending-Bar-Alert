@@ -3,12 +3,8 @@
     "color": "green",
     "length": 11
   },
-  "AVAXUSDT|30m": {
+  "UNIUSDT|30m": {
     "color": "green",
-    "length": 12
-  },
-  "SOLUSDT|30m": {
-    "color": "green",
-    "length": 6
+    "length": 5
   }
 }
