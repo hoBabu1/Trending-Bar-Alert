@@ -1,14 +1,14 @@
 {
   "XRPUSDT|4h": {
     "color": "green",
-    "length": 10
+    "length": 11
   },
   "AVAXUSDT|30m": {
     "color": "green",
-    "length": 11
+    "length": 12
   },
   "SOLUSDT|30m": {
     "color": "green",
-    "length": 5
+    "length": 6
   }
 }
