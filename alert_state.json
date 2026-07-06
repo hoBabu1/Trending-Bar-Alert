@@ -1,9 +1,5 @@
 {
-  "XRPUSDT|30m": {
-    "color": "green",
-    "length": 8
-  },
-  "UNIUSDT|30m": {
+  "UNIUSDT|1h": {
     "color": "green",
     "length": 5
   }
