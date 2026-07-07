@@ -1,1 +1,14 @@
-{}
+{
+  "BTCUSDT|30m": {
+    "color": "red",
+    "length": 5
+  },
+  "XRPUSDT|30m": {
+    "color": "red",
+    "length": 5
+  },
+  "AVAXUSDT|1h": {
+    "color": "red",
+    "length": 5
+  }
+}
