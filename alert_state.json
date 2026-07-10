@@ -1,10 +1,14 @@
 {
-  "BTCUSDT|1h": {
+  "UNIUSDT|4h": {
     "color": "green",
     "length": 5
   },
-  "UNIUSDT|4h": {
+  "UNIUSDT|1h": {
     "color": "green",
+    "length": 5
+  },
+  "AVAXUSDT|30m": {
+    "color": "red",
     "length": 5
   }
 }
