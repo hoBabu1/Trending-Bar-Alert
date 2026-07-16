@@ -1,14 +1,10 @@
 {
-  "AVAXUSDT|30m": {
+  "BTCUSDT|30m": {
     "color": "red",
     "length": 7
   },
-  "BTCUSDT|30m": {
-    "color": "red",
-    "length": 6
-  },
   "SOLUSDT|30m": {
     "color": "red",
-    "length": 6
+    "length": 7
   }
 }
