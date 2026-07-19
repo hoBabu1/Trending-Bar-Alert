@@ -1,10 +1,10 @@
 {
   "BTCUSDT|4h": {
     "color": "green",
-    "length": 5
+    "length": 6
   },
   "BTCUSDT|1h": {
     "color": "green",
-    "length": 7
+    "length": 8
   }
 }
