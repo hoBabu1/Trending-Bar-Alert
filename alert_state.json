@@ -1,1 +1,10 @@
-{}
+{
+  "UNIUSDT|4h": {
+    "color": "green",
+    "length": 5
+  },
+  "AVAXUSDT|1h": {
+    "color": "green",
+    "length": 5
+  }
+}
