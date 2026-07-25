@@ -1,14 +1,10 @@
 {
   "UNIUSDT|4h": {
     "color": "red",
-    "length": 6
+    "length": 7
   },
-  "UNIUSDT|1h": {
+  "SOLUSDT|30m": {
     "color": "red",
-    "length": 10
-  },
-  "BTCUSDT|30m": {
-    "color": "green",
     "length": 5
   }
 }
