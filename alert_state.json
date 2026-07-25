@@ -2,5 +2,9 @@
   "UNIUSDT|4h": {
     "color": "red",
     "length": 7
+  },
+  "AVAXUSDT|1h": {
+    "color": "green",
+    "length": 5
   }
 }
