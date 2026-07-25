@@ -1,1 +1,6 @@
-{}
+{
+  "UNIUSDT|4h": {
+    "color": "red",
+    "length": 5
+  }
+}
