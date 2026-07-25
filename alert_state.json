@@ -6,5 +6,9 @@
   "UNIUSDT|1h": {
     "color": "red",
     "length": 10
+  },
+  "BTCUSDT|30m": {
+    "color": "green",
+    "length": 5
   }
 }
