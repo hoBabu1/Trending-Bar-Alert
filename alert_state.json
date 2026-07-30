@@ -1,7 +1,7 @@
 {
   "UNIUSDT|1h": {
     "color": "green",
-    "length": 6
+    "length": 7
   },
   "XRPUSDT|4h": {
     "color": "green",
@@ -9,6 +9,10 @@
   },
   "UNIUSDT|30m": {
     "color": "green",
-    "length": 6
+    "length": 7
+  },
+  "BTCUSDT|1h": {
+    "color": "green",
+    "length": 5
   }
 }
