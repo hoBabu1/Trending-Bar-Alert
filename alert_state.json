@@ -10,9 +10,5 @@
   "SOLUSDT|4h": {
     "color": "red",
     "length": 5
-  },
-  "SOLUSDT|30m": {
-    "color": "green",
-    "length": 5
   }
 }
