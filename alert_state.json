@@ -11,12 +11,8 @@
     "color": "red",
     "length": 5
   },
-  "XRPUSDT|1h": {
-    "color": "red",
-    "length": 5
-  },
   "UNIUSDT|1h": {
     "color": "red",
-    "length": 5
+    "length": 6
   }
 }
