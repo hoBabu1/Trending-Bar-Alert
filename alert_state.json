@@ -1,10 +1,18 @@
 {
   "SOLUSDT|1h": {
     "color": "green",
-    "length": 9
+    "length": 10
   },
   "UNIUSDT|1h": {
     "color": "green",
-    "length": 7
+    "length": 8
+  },
+  "BTCUSDT|1h": {
+    "color": "green",
+    "length": 5
+  },
+  "XRPUSDT|1h": {
+    "color": "green",
+    "length": 5
   }
 }
