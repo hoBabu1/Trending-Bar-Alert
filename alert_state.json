@@ -2,5 +2,13 @@
   "UNIUSDT|1h": {
     "color": "red",
     "length": 5
+  },
+  "XRPUSDT|30m": {
+    "color": "red",
+    "length": 5
+  },
+  "UNIUSDT|30m": {
+    "color": "red",
+    "length": 5
   }
 }
