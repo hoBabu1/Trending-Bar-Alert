@@ -2,5 +2,9 @@
   "AVAXUSDT|1h": {
     "color": "red",
     "length": 6
+  },
+  "AVAXUSDT|30m": {
+    "color": "red",
+    "length": 5
   }
 }
