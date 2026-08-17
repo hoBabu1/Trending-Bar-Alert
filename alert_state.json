@@ -3,8 +3,8 @@
     "color": "green",
     "length": 5
   },
-  "UNIUSDT|30m": {
-    "color": "red",
+  "AVAXUSDT|1h": {
+    "color": "green",
     "length": 5
   }
 }
