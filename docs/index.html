@@ -4,54 +4,46 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>T-Bar Alerts</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&display=swap" rel="stylesheet">
 <style>
-  /* GitHub's neutral palette, monochrome — no accent hue. Red is kept for
-     errors and destructive actions only, as GitHub itself does. */
+  /* True black, GitHub's dark borders and text. Dark only — no light flip.
+     Red is kept for errors and the destructive action, as GitHub does. */
   :root {
-    --bg: #ffffff; --panel: #ffffff; --panel2: #f6f8fa; --line: #d1d9e0;
-    --fg: #1f2328; --dim: #59636e; --strong: #1f2328; --on-strong: #ffffff;
-    --danger: #cf222e; --hover: #f6f8fa;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0d1117; --panel: #151b23; --panel2: #0d1117; --line: #3d444d;
-      --fg: #f0f6fc; --dim: #9198a1; --strong: #f0f6fc; --on-strong: #0d1117;
-      --danger: #ff7b72; --hover: #212830;
-    }
+    --bg: #000000; --panel: #0d1117; --panel2: #010409; --line: #30363d;
+    --fg: #f0f6fc; --dim: #9198a1; --strong: #f0f6fc; --on-strong: #000000;
+    --danger: #ff7b72; --hover: #21262d;
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0; padding: 32px 16px 64px; background: var(--bg); color: var(--fg);
-    font: 16px/1.6 "Architects Daughter", "Comic Sans MS", cursive, system-ui, sans-serif;
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
+          Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   }
   .wrap { max-width: 860px; margin: 0 auto; }
-  h1 { font-size: 30px; margin: 0 0 2px; font-weight: 400; letter-spacing: .3px; }
-  h2 { font-size: 20px; margin: 0; font-weight: 400; }
-  .sub { color: var(--dim); font-size: 15px; margin: 0 0 24px; }
+  h1 { font-size: 24px; margin: 0 0 2px; font-weight: 600; }
+  h2 { font-size: 16px; margin: 0; font-weight: 600; }
+  .sub { color: var(--dim); font-size: 14px; margin: 0 0 24px; }
   .card {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
     padding: 16px; margin-bottom: 16px;
   }
   .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-  .muted { color: var(--dim); font-size: 13px; }
-  label { display: block; font-size: 13px; color: var(--dim); margin-bottom: 4px; }
+  .muted { color: var(--dim); font-size: 12px; }
+  label { display: block; font-size: 12px; color: var(--dim); margin-bottom: 4px; }
   input[type=text], input[type=password] {
-    width: 100%; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--line);
-    background: var(--bg); color: var(--fg); font: inherit; font-size: 15px;
+    width: 100%; padding: 5px 12px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--panel2); color: var(--fg); font: inherit;
   }
-  input:focus { outline: none; border-color: var(--fg); box-shadow: 0 0 0 3px var(--hover); }
+  input:focus { outline: none; border-color: var(--dim); box-shadow: 0 0 0 3px var(--hover); }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
   button {
-    padding: 6px 16px; border-radius: 6px; border: 1px solid var(--line);
-    background: var(--panel2); color: var(--fg); font: inherit; font-size: 15px; cursor: pointer;
+    padding: 5px 16px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--panel2); color: var(--fg); font: inherit; font-weight: 500; cursor: pointer;
   }
   button:hover:not(:disabled) { background: var(--hover); border-color: var(--dim); }
   button:disabled { opacity: .5; cursor: not-allowed; }
   button.primary { background: var(--strong); border-color: var(--strong); color: var(--on-strong); }
-  button.primary:hover:not(:disabled) { opacity: .85; background: var(--strong); }
+  button.primary:hover:not(:disabled) { opacity: .9; background: var(--strong); }
   button.ghost { background: none; }
   button.danger { background: none; color: var(--danger); border-color: transparent; padding: 4px 8px; }
   button.danger:hover:not(:disabled) { background: var(--hover); border-color: var(--line); }
@@ -60,27 +52,33 @@
     padding: 12px 0; border-top: 1px solid var(--line);
   }
   .row:first-of-type { border-top: none; }
-  .coin { font-weight: 400; min-width: 120px; font-size: 18px; }
-  .coin small { display: block; color: var(--dim); font-size: 12px; letter-spacing: .5px; }
+  .coin { font-weight: 600; min-width: 120px; font-size: 14px; }
+  .coin small {
+    display: block; font-weight: 400; color: var(--dim); font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
   .tfs { display: flex; gap: 14px; flex: 1; }
-  .tf { display: flex; align-items: center; gap: 6px; font-size: 15px; color: var(--dim); cursor: pointer; }
-  .tf input { accent-color: var(--strong); cursor: pointer; width: 15px; height: 15px; }
+  .tf { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--dim); cursor: pointer; }
+  .tf input { accent-color: var(--strong); cursor: pointer; }
   .tf.on { color: var(--fg); }
   .picker { position: relative; margin-top: 12px; }
   .results {
     position: absolute; z-index: 10; left: 0; right: 0; top: 100%; margin-top: 4px;
     max-height: 200px; overflow-y: auto; background: var(--panel);
     border: 1px solid var(--line); border-radius: 6px;
-    box-shadow: 0 8px 24px rgba(1, 4, 9, .2);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .6);
   }
-  .results div { padding: 8px 12px; cursor: pointer; font-size: 15px; }
+  .results div { padding: 8px 12px; cursor: pointer; font-size: 14px; }
   .results div:hover, .results div.sel { background: var(--hover); }
-  .empty { color: var(--dim); font-size: 15px; padding: 8px 0; }
+  .results .muted {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  .empty { color: var(--dim); font-size: 14px; padding: 8px 0; }
   .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  #status { min-height: 22px; font-size: 15px; margin-top: 14px; word-break: break-word; }
+  #status { min-height: 20px; font-size: 13px; margin-top: 14px; word-break: break-word; }
   .ok { color: var(--fg); } .err { color: var(--danger); } .warn { color: var(--dim); }
-  details summary { cursor: pointer; color: var(--dim); font-size: 15px; }
-  .note { font-size: 13px; color: var(--dim); margin-top: 10px; line-height: 1.6; }
+  details summary { cursor: pointer; color: var(--dim); font-size: 14px; }
+  .note { font-size: 12px; color: var(--dim); margin-top: 10px; line-height: 1.5; }
 </style>
 </head>
 <body>
