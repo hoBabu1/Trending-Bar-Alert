@@ -106,6 +106,7 @@ TELEGRAM_API_BASE = "https://api.telegram.org/bot{token}/sendMessage"
 # doesn't define its own. A chat id env var may hold several comma-separated
 # ids; every id receives the same message.
 SHARED_CHAT_ENV = "TELEGRAM_CHAT_ID"
+SECTION_LABELS = {"dayMomentum": "DayMomentum", "custom": "Custom"}
 STREAMS = {
     "bot4h": {
         "label": "BOT4H",
@@ -467,22 +468,75 @@ def format_close_time(close_ms):
     return f"{dt.strftime('%Y-%m-%d %H:%M')} UTC ({dt.astimezone(IST).strftime('%H:%M')} IST)"
 
 
+def streak_emoji(color):
+    return "🟢" if color == "green" else "🔴" if color == "red" else "⚪"
+
+
 def format_streak(color, length):
-    """'6🔴 ⭐' — count, color, and a star once the T-bar threshold is hit."""
-    if color == "green":
-        emoji = "🟢"
-    elif color == "red":
-        emoji = "🔴"
-    else:
-        emoji = "⚪"
-    star = " ⭐" if (color and length >= MIN_STREAK) else ""
-    return f"{length}{emoji}{star}"
+    """'6🔴' — count then colour. The star is added by the table builder."""
+    return f"{length}{streak_emoji(color)}"
+
+
+def streak_move(candles, length):
+    """Percent move from the streak's first open to the latest close."""
+    if not candles or not length:
+        return 0.0
+    first_open = candles[-length]["open"]
+    if not first_open:
+        return 0.0
+    return (candles[-1]["close"] - first_open) / first_open * 100
+
+
+def display_width(text):
+    """
+    Width of `text` in monospace cells. Emoji render two columns wide but are
+    a single character, so padding with len() drifts every column after one.
+    """
+    width = 0
+    for ch in text:
+        cp = ord(ch)
+        if cp == 0xFE0F:            # variation selector: renders as nothing
+            continue
+        if (0x1F300 <= cp <= 0x1FAFF or 0x2600 <= cp <= 0x27BF
+                or 0x2B00 <= cp <= 0x2BFF):
+            width += 2
+        else:
+            width += 1
+    return width
+
+
+def pad(text, width, right=False):
+    fill = " " * max(0, width - display_width(text))
+    return fill + text if right else text + fill
+
+
+def build_table(headings, rows, right_align=()):
+    """Render a fixed-width table for Telegram's <pre> block."""
+    widths = [display_width(h) for h in headings]
+    for row in rows:
+        for i, cell in enumerate(row[:len(widths)]):
+            widths[i] = max(widths[i], display_width(cell))
+
+    def line(cells):
+        return "  ".join(
+            pad(c, widths[i], right=(i in right_align))
+            for i, c in enumerate(cells)
+        ).rstrip()
+
+    head = line(headings)
+    body = [head, "─" * min(display_width(head) + 2, 32)]
+    body += [line(r) for r in rows]
+    return "<pre>" + "\n".join(body) + "</pre>"
 
 
 def header(title, close_ms, force):
+    """Two lines: what this is, then the candle close in both zones."""
+    dt = datetime.fromtimestamp(close_ms / 1000, tz=timezone.utc)
+    when = (f"{dt.strftime('%d %b')} · {dt.strftime('%H:%M')} UTC · "
+            f"{dt.astimezone(IST).strftime('%H:%M')} IST")
     if force:
-        return f"📸 <b>On-demand snapshot</b> — {format_close_time(close_ms)}\n"
-    return f"{title} — {format_close_time(close_ms)}\n"
+        title = "📸 <b>On-demand snapshot</b>"
+    return f"{title}\n<i>{when}</i>\n"
 
 
 # --------------------------------------------------------------------------- #
@@ -517,12 +571,18 @@ def run_bot4h(state, force=False, dry_run=False):
     for name, pair in load_coins():
         fetched = fetch_candles(pair, BOT4H_TIMEFRAME)
         if fetched is None:
-            rows.append(f"<b>{name}</b>: ⚠️ unavailable")
+            rows.append([name, "—", "—", "⚠️"])
             continue
         candles, close_ms = fetched
         color, length = compute_streak(candles)
         latest_close = close_ms if latest_close is None else max(latest_close, close_ms)
-        rows.append(f"<b>{name}</b>: {format_streak(color, length)}")
+        star = " ⭐" if length >= MIN_STREAK else ""
+        rows.append([
+            name,
+            str(length),
+            f"{streak_move(candles, length):+.2f}%",
+            f"{streak_emoji(color)}{star}",
+        ])
         log.info("bot4h %s 4h -> %s %s", name, length, color or "flat")
 
     if latest_close is None:
@@ -532,7 +592,9 @@ def run_bot4h(state, force=False, dry_run=False):
         log.info("bot4h: 4h candle %s already reported; nothing due.", latest_close)
         return
 
-    message = header("🕓 <b>4H T-Bar</b>", latest_close, force) + "\n" + "\n".join(rows)
+    message = (header("🕓 <b>4H T-Bar</b>", latest_close, force)
+               + build_table(["COIN", "BARS", "MOVE", ""], rows,
+                             right_align={1, 2}))
     delivered = deliver("bot4h", message, dry_run)
     # --force is a snapshot: it must not consume the scheduled report.
     if delivered and not force and not dry_run:
@@ -549,35 +611,47 @@ def run_watchlist(section, state, config, force=False, dry_run=False):
         log.info("%s: watchlist is empty; nothing to do.", section)
         return
 
-    rows, due_keys, latest_close = [], [], None
+    cells, due_keys, latest_close = {}, [], None
+    live_tfs = []
 
     for entry in entries:
         pair, name = entry["pair"], entry["name"]
-        parts = []
         for timeframe in ("30m", "1h", "4h"):
             if timeframe not in entry["timeframes"]:
                 continue
             key = f"{section}|{pair}|{timeframe}"
             fetched = fetch_candles(pair, timeframe)
             if fetched is None:
-                parts.append(f"{timeframe} ⚠️")
+                cells[(name, timeframe)] = "⚠️"
                 continue
             candles, close_ms = fetched
             if not force and not is_due(state, key, close_ms):
                 continue  # this timeframe hasn't closed again since last report
             color, length = compute_streak(candles)
-            parts.append(f"{timeframe} {format_streak(color, length)}")
+            star = "⭐" if length >= MIN_STREAK else ""
+            cells[(name, timeframe)] = f"{format_streak(color, length)}{star}"
             due_keys.append((key, close_ms))
+            if timeframe not in live_tfs:
+                live_tfs.append(timeframe)
             latest_close = close_ms if latest_close is None else max(latest_close, close_ms)
             log.info("%s %s %s -> %s %s", section, name, timeframe, length, color or "flat")
-        if parts:
-            rows.append(f"<b>{name}</b>: " + " | ".join(parts))
 
-    if not rows or latest_close is None:
+    if not due_keys or latest_close is None:
         log.info("%s: nothing due at this tick.", section)
         return
 
-    message = header("🔍 <b>Scan complete</b>", latest_close, force) + "\n" + "\n".join(rows)
+    # Only show timeframe columns that actually closed at this tick.
+    live_tfs = [tf for tf in ("30m", "1h", "4h") if tf in live_tfs]
+    names, seen = [], set()
+    for entry in entries:
+        n = entry["name"]
+        if n not in seen and any((n, tf) in cells for tf in live_tfs):
+            names.append(n)
+            seen.add(n)
+
+    rows = [[n] + [cells.get((n, tf), "·") for tf in live_tfs] for n in names]
+    message = (header(f"🔍 <b>{SECTION_LABELS.get(section, section)}</b>", latest_close, force)
+               + build_table(["COIN"] + live_tfs, rows))
     delivered = deliver(section, message, dry_run)
     if delivered and not force and not dry_run:
         for key, close_ms in due_keys:
