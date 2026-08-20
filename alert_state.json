@@ -1,7 +1,7 @@
 {
   "bot4h|4h": {
-    "last_close_ms": 1787241600000,
-    "updated": "2026-08-20T16:00:55Z"
+    "last_close_ms": 1787256000000,
+    "updated": "2026-08-20T20:00:55Z"
   },
   "custom|ETHUSDT|1h": {
     "last_close_ms": 1787245200000,
@@ -24,7 +24,7 @@
     "updated": "2026-08-20T16:01:00Z"
   },
   "dayMomentum|XBTUSDT|30m": {
-    "last_close_ms": 1787254200000,
-    "updated": "2026-08-20T19:30:47Z"
+    "last_close_ms": 1787256000000,
+    "updated": "2026-08-20T20:00:59Z"
   }
 }
