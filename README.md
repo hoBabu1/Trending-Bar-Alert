@@ -1,167 +1,182 @@
-# 🕯 Crypto Candle Streak Telegram Alert Bot
+# T-Bar Alert
 
-A lightweight Python bot that watches the market and sends you a **Telegram alert**
-whenever a coin prints **5 or more consecutive green or red closed candles** on a
-given timeframe. It keeps alerting as the streak grows (5th → 6th → 7th candle…)
-and stops once the streak breaks. After every scan it also sends a compact
-**heartbeat summary** so you always know it's alive.
+Telegram alerts for **T-bars** — 5 or more consecutive same-colour candles — plus
+periodic momentum reports, driven by Kraken OHLC data and GitHub Actions.
 
-- **Coins:** BTC, SOL, XRP, UNI, AVAX
-- **Timeframes:** 30m, 1h, 4h
-- **Data source:** Kraken public REST API (no API key required)
-- **Dependencies:** just `requests`
+A "T-bar" is 5+ candles of the same colour in a row on a given timeframe. Counts
+are always reported; a count of 5 or more is marked with ⭐.
 
-> ℹ️ **Why Kraken?** Binance (HTTP 451) and Bybit (HTTP 403) geo-block requests
-> from US cloud / data-center IPs, which is where free hosts like GitHub Actions
-> run. Kraken is reachable from those hosts and supports the 30m / 1h / 4h
-> timeframes this bot uses.
+## The three streams
 
----
+| Stream | Bot | Coins | When |
+|---|---|---|---|
+| **Rule 1** | `BOT4H` | Fixed 10: BTC, BNB, ETH, XRP, HYPE, UNI, XLM, ADA, DOGE, NEAR | Every 4h close |
+| **Rule 2** | `MomentumBOT` | `dayMomentum` list in `config.json` | Every close of each coin's subscribed timeframes |
+| **Rule 3** | `customTbarBOT` | `custom` list in `config.json` | Same, independent list |
 
-## 1. Get your Telegram Bot Token
+Rules 2 and 3 are functionally identical — two separate watchlists so you can run
+a settled list and an experimental one side by side.
 
-1. Open Telegram and search for **@BotFather**.
-2. Send `/newbot` and follow the prompts (choose a name and a username ending in `bot`).
-3. BotFather replies with a **token** that looks like:
-   ```
-   123456789:AAH...your-token...xyz
-   ```
-   This is your `TELEGRAM_BOT_TOKEN`.
+### Message formats
 
-## 2. Get your Telegram Chat ID
+```
+🕓 4H T-Bar — 2026-08-20 12:00 UTC (17:30 IST)
 
-1. Search for **@userinfobot** in Telegram.
-2. Start it / send any message.
-3. It replies with your numeric **Id** — that is your `TELEGRAM_CHAT_ID`.
+BTC: 3🟢
+BNB: 6🔴 ⭐
+DOGE: ⚠️ unavailable
+```
 
-> 💡 Make sure you send `/start` to **your own bot** at least once, otherwise
-> Telegram won't let the bot message you.
+```
+🔍 Scan complete — 2026-08-20 12:00 UTC (17:30 IST)
 
----
+BTC: 30m 1🟢 | 1h 1🔴
+SOL: 30m 2🟢
+```
 
-## 3. Run locally (optional)
+Only the coins and timeframes that actually closed at that tick appear. At a
+12:00 tick both 30m and 1h close, so a coin subscribed to both shows both lines
+in one message; at 12:30 only the 30m column appears.
+
+## Timing
+
+Time is anchored to **05:30 AM IST**, which is 00:00 UTC. IST is UTC+5:30 with no
+DST, so Kraken's native candle boundaries already line up:
+
+- **4h** closes at 05:30 / 09:30 / 13:30 / 17:30 / 21:30 / 01:30 IST
+- **1h** closes at :30 past each hour IST
+- **30m** closes at :00 and :30 IST
+
+The scanner never reads the wall clock to decide whether to fire. It compares the
+latest closed candle (from Kraken's `last` field) against the last close it
+already reported, stored in `alert_state.json`. A late or missed run therefore
+catches up on the next tick instead of silently skipping an alert.
+
+## Setup
+
+### 1. Telegram bots
+
+Create three bots with [@BotFather](https://t.me/BotFather), then add **four**
+repository secrets under **Settings → Secrets and variables → Actions**:
+
+```
+TELEGRAM_BOT_TOKEN_4H
+TELEGRAM_BOT_TOKEN_MOMENTUM
+TELEGRAM_BOT_TOKEN_CUSTOM
+TELEGRAM_CHAT_ID              # shared by all three bots
+```
+
+One chat id covers all three, because it identifies your Telegram account rather
+than the bot. To find it, message [@userinfobot](https://t.me/userinfobot) — the
+number it replies with is your chat id.
+
+The id may be a comma-separated list (`123456789,987654321`) to reach several
+people. To send one stream somewhere else — a group, say — set the optional
+override `TELEGRAM_CHAT_ID_4H`, `TELEGRAM_CHAT_ID_MOMENTUM`, or
+`TELEGRAM_CHAT_ID_CUSTOM`; where set, it wins over the shared value. Group ids
+are negative, like `-1001234567890`.
+
+A stream whose token is missing is skipped with a warning; the other two still
+run.
+
+### 2. Trigger
+
+GitHub's own scheduler is unreliable, so the real trigger is an external cron
+(cron-job.org) calling the `workflow_dispatch` API every 30 minutes. Set it to
+fire at **:05 and :35** — a few minutes after each boundary, never inside it.
+The `schedule:` block in the workflow is a best-effort backup.
+
+### 3. Frontend
+
+Enable **Settings → Pages** with source `master` / `/docs`. The page at
+`https://<owner>.github.io/<repo>/` lets you edit the two watchlists and press
+**Now** for an immediate snapshot.
+
+It needs a fine-grained PAT scoped to this repository with **Contents:
+read/write** and **Actions: read/write**. Paste it into the connection settings
+panel; it is stored in your browser's localStorage and sent only to
+`api.github.com`.
+
+> ⚠️ A project Pages site is served from `https://<owner>.github.io/` — **one
+> origin shared by every project page you own**. Any other page under that
+> account can read the token out of localStorage. Scope it to this repo alone and
+> give it a short expiry (30–90 days). If the repo is public, your watchlists are
+> publicly readable too. To avoid both, skip Pages and open `docs/index.html`
+> from disk instead — everything including **Now** still works.
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `candle_alert_bot.py` | The scanner — all three streams |
+| `config.json` | The two watchlists; written by the frontend |
+| `alert_state.json` | Last reported candle close per stream; committed by the workflow |
+| `docs/index.html` | The frontend, self-contained, no build step |
+| `.github/workflows/candle-alert.yml` | Runs the scan and commits state back |
+
+### `config.json`
+
+```json
+{
+  "dayMomentum": [
+    { "pair": "SOLUSD", "name": "SOL", "timeframes": ["30m", "1h"] }
+  ],
+  "custom": [
+    { "pair": "XXBTZUSD", "name": "BTC", "timeframes": ["4h"] }
+  ]
+}
+```
+
+`pair` is the Kraken pair id, `name` the display label. Storing both means adding
+a coin never requires a code change. A missing or malformed file is treated as
+two empty lists. The frontend caps each section at 25 coins.
+
+### `alert_state.json`
+
+```json
+{
+  "bot4h|4h":               { "last_close_ms": 1787212800000, "updated": "2026-08-20T12:00:00Z" },
+  "dayMomentum|SOLUSD|30m": { "last_close_ms": 1787229000000, "updated": "2026-08-20T12:30:00Z" }
+}
+```
+
+Rule 1 uses a **single** `bot4h|4h` key for all ten coins, so one failed fetch
+can't trigger a bogus one-coin report off-boundary — the coin shows as
+`⚠️ unavailable` in an otherwise complete report. Entries untouched for 7 days
+are pruned. (If the cron dies for over a week the state empties and all three
+bots re-fire together on resume.)
+
+## Running locally
 
 ```bash
 pip install -r requirements.txt
 
-export TELEGRAM_BOT_TOKEN="123456789:AAH...xyz"
-export TELEGRAM_CHAT_ID="987654321"
-
-python candle_alert_bot.py
+python candle_alert_bot.py --dry-run          # print what's due, send nothing
+python candle_alert_bot.py --force --dry-run  # print everything's status
+python candle_alert_bot.py --force            # send a 📸 snapshot to all three bots
+python candle_alert_bot.py                    # a normal scan
 ```
 
-On startup you'll get:
+`--force` backs the **Now** button. It reports current status regardless of
+dueness and does **not** advance state, so the next scheduled report still
+arrives normally. It is labelled `📸 On-demand snapshot` so you can tell the two
+apart. `--dry-run` never writes state.
 
-> 🤖 Candle Alert Bot is live! Monitoring BTC, SOL, XRP, UNI, AVAX on 30m / 1h / 4h.
-
----
-
-## 4. Deploy on GitHub Actions (free, recommended)
-
-The bot ships with a scheduled workflow at
-[.github/workflows/candle-alert.yml](.github/workflows/candle-alert.yml) that
-runs a single scan every 30 minutes — no server and no monthly cost. It runs the
-script in `--once` mode and persists `alert_state.json` back to the repo so you
-only get alerted when a streak is **new or grows** (no duplicate spam across runs).
-
-1. Push this folder to a GitHub repository.
-2. In your repo, go to **Settings → Secrets and variables → Actions**.
-3. Under **Repository secrets** (not *Environment* secrets), click
-   **New repository secret** and add both:
-
-   | Name                 | Value                |
-   | -------------------- | -------------------- |
-   | `TELEGRAM_BOT_TOKEN` | your BotFather token |
-   | `TELEGRAM_CHAT_ID`   | your numeric chat id |
-
-4. Go to the **Actions** tab → **Candle Streak Alert** → **Run workflow** to test
-   it immediately (otherwise it runs automatically on the 30-minute schedule).
-
-> ⏱ **Schedule note:** On GitHub Actions the scan frequency is controlled by the
-> `cron` line in the workflow file (`*/30 * * * *`), **not** the `CHECK_INTERVAL`
-> variable. GitHub may delay scheduled runs by a few minutes under load, and
-> auto-pauses schedules after 60 days of repo inactivity (a single run re-enables
-> them).
-
----
-
-## 4b. Alternative: deploy on Render.com (always-on, paid)
-
-Prefer a continuously running process instead of a cron? Deploy the **Background
-Worker** defined in `render.yaml`. In this mode the script runs forever
-(`python candle_alert_bot.py`, no `--once`) and uses `CHECK_INTERVAL`.
-
-1. [Render.com](https://render.com) → **New** → **Background Worker** → connect your repo.
-2. Render auto-detects `render.yaml` (runtime, build/start commands, Starter plan).
-3. In the service dashboard → **Environment**, add `TELEGRAM_BOT_TOKEN` and
-   `TELEGRAM_CHAT_ID`. Save — Render redeploys automatically.
-
-> ⚠️ Render's free plan does **not** support always-on workers (they spin down).
-> Keeping it running 24/7 needs the **Starter plan (~$7/month)**.
-
----
-
-## 5. What you'll receive in Telegram
-
-**A) Streak alert** — only when a coin hits a 5+ streak or it grows:
+For local runs put the same four values in a `.env` file (gitignored):
 
 ```
-🟢 Candle Streak Alert!
-
-📌 Coin      : BTC
-⏱ Timeframe : 1h
-🕯 Streak    : 5 consecutive green candles
-💰 Last Close: $67,432.10
-🕒 Time (UTC): 2024-01-15 14:00
+TELEGRAM_BOT_TOKEN_4H=123456:ABC-your-4h-token
+TELEGRAM_BOT_TOKEN_MOMENTUM=123456:ABC-your-momentum-token
+TELEGRAM_BOT_TOKEN_CUSTOM=123456:ABC-your-custom-token
+TELEGRAM_CHAT_ID=123456789
 ```
 
-**B) Heartbeat summary** — after every scan, so you know the bot is alive:
+## Notes on the data source
 
-```
-🔍 Scan complete — 2024-01-15 14:00 UTC
+Kraken is used because Binance (HTTP 451) and Bybit (HTTP 403) both geo-block the
+US data-centre IPs that GitHub runners use.
 
-BTC: 30m 1🔴 | 1h 1🟢 | 4h 1🟢
-SOL: 30m 1🔴 | 1h 1🟢 | 4h 1🟢
-XRP: 30m 1🔴 | 1h 1🟢 | 4h 1🟢
-UNI: 30m 1🔴 | 1h 5🟢⭐ | 4h 1🟢
-AVAX: 30m 1🔴 | 1h 1🟢 | 4h 1🟢
-```
-
-Each entry is `timeframe streak-length color`. ⭐ marks a streak that has hit the
-alert threshold; ⚪ means a doji (no clear color). Turn the heartbeat off by
-setting `SEND_SCAN_SUMMARY = False` at the top of the script.
-
----
-
-## 6. Customize
-
-All settings live at the top of [candle_alert_bot.py](candle_alert_bot.py):
-
-```python
-SYMBOLS = ["BTCUSDT", "SOLUSDT", "XRPUSDT", "UNIUSDT", "AVAXUSDT"]
-TIMEFRAMES = ["30m", "1h", "4h"]
-MIN_STREAK = 5             # alert threshold
-CHECK_INTERVAL = 30 * 60   # scan frequency in seconds (Render/local loop only)
-SEND_SCAN_SUMMARY = True   # send the heartbeat summary after every scan
-```
-
-- **Add/remove coins:** edit `SYMBOLS`, then add the Kraken pair mapping in
-  `KRAKEN_PAIRS` (e.g. `"DOGEUSDT": "DOGEUSD"`). Kraken uses `XBT` for BTC.
-- **Change timeframes:** edit `TIMEFRAMES` using values present in
-  `KRAKEN_INTERVALS` (`1m`, `5m`, `15m`, `30m`, `1h`, `4h`, `1d`).
-- **Change streak length:** set `MIN_STREAK` (e.g. `3` for shorter streaks).
-- **Change scan frequency:**
-  - On **GitHub Actions**, edit the `cron` in the workflow file (e.g.
-    `0 * * * *` for hourly).
-  - On **Render / local loop**, set `CHECK_INTERVAL` (in seconds).
-- **Mute the heartbeat:** set `SEND_SCAN_SUMMARY = False` (keeps streak alerts).
-
----
-
-## How streak detection works
-
-- A candle is **green** if `close > open`, **red** if `close < open`.
-- Only **closed** candles count — the currently forming candle is ignored.
-- The bot counts how many of the most recent closed candles share the same color.
-- When that count reaches `MIN_STREAK`, you get an alert; you get another alert
-  each time the streak extends, and the state resets when the streak breaks.
+Kraken fills no-trade periods with zero-volume candles where `open == close`.
+Those count as flat (⚪) and end a streak, which is deliberate: treating them as
+streak-continuing would show permanent fake T-bars on illiquid pairs, and the
+coin picker offers every Kraken USD pair.

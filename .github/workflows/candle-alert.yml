@@ -1,20 +1,29 @@
-name: Candle Streak Alert
+name: T-Bar Alert
 
 on:
   schedule:
     # Best-effort backup only. GitHub's scheduler is unreliable (and throttled
     # on new free accounts), so the real 30-min trigger comes from an external
-    # cron (cron-job.org) hitting the workflow_dispatch API. Off-peak minutes.
+    # cron (cron-job.org) hitting the workflow_dispatch API at :05 and :35 —
+    # a few minutes after each candle boundary, never inside it.
     - cron: "7,37 * * * *"
-  workflow_dispatch: {}   # lets you run it manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "On-demand snapshot: report everything now, ignoring dueness"
+        type: boolean
+        required: false
+        default: false
 
 # Needed so the job can commit the updated alert_state.json back to the repo.
 permissions:
   contents: write
 
-# Prevent overlapping runs from racing on the state file.
+# Scheduled runs serialize on the state file, but an on-demand snapshot must
+# never be queued behind (and silently cancelled by) a scheduled run — GitHub
+# keeps only one pending run per group, so the force path gets its own.
 concurrency:
-  group: candle-alert
+  group: candle-alert-${{ github.event.inputs.force || 'scheduled' }}
   cancel-in-progress: false
 
 jobs:
@@ -34,18 +43,40 @@ jobs:
 
       - name: Run candle scan
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          # One shared chat id covers all three bots. The per-stream ids below
+          # are optional overrides — set one only to route that stream
+          # somewhere else (a group, say) instead of your DMs.
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python candle_alert_bot.py --once
+          TELEGRAM_BOT_TOKEN_4H: ${{ secrets.TELEGRAM_BOT_TOKEN_4H }}
+          TELEGRAM_BOT_TOKEN_MOMENTUM: ${{ secrets.TELEGRAM_BOT_TOKEN_MOMENTUM }}
+          TELEGRAM_BOT_TOKEN_CUSTOM: ${{ secrets.TELEGRAM_BOT_TOKEN_CUSTOM }}
+          TELEGRAM_CHAT_ID_4H: ${{ secrets.TELEGRAM_CHAT_ID_4H }}
+          TELEGRAM_CHAT_ID_MOMENTUM: ${{ secrets.TELEGRAM_CHAT_ID_MOMENTUM }}
+          TELEGRAM_CHAT_ID_CUSTOM: ${{ secrets.TELEGRAM_CHAT_ID_CUSTOM }}
+        # workflow_dispatch inputs arrive as strings, so compare against 'true'.
+        run: python candle_alert_bot.py ${{ github.event.inputs.force == 'true' && '--force' || '' }}
 
       - name: Persist alert state
         run: |
-          if [ -n "$(git status --porcelain alert_state.json)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add alert_state.json
-            git commit -m "chore: update alert state [skip ci]"
-            git push
-          else
+          if [ -z "$(git status --porcelain alert_state.json)" ]; then
             echo "No state change to commit."
+            exit 0
           fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add alert_state.json
+          git commit -m "chore: update alert state [skip ci]"
+          # actions/checkout sets no upstream tracking, so a bare `git pull`
+          # fails; fetch + rebase explicitly, and retry if the frontend commits
+          # config.json in the same window.
+          for attempt in 1 2 3; do
+            if git push origin HEAD:${{ github.ref_name }}; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push failed on attempt $attempt; rebasing onto latest."
+            git fetch origin ${{ github.ref_name }}
+            git rebase origin/${{ github.ref_name }} || { git rebase --abort; exit 1; }
+          done
+          echo "Could not push state after 3 attempts."
+          exit 1

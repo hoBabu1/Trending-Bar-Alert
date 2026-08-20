@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
 """
-Crypto Candle Streak Telegram Alert Bot
+T-Bar Alert Bot
 
-Monitors Binance for consecutive same-color closed candles and sends a Telegram
-alert whenever a coin/timeframe shows MIN_STREAK or more candles in a row of the
-same color. Re-alerts on every new candle that extends an active streak.
+Reports consecutive same-color closed candles ("T-bar" = 5 or more in a row)
+from Kraken OHLC data to three independent Telegram bots:
+
+  1. bot4h        — fixed 10-coin report on the 4h timeframe, every 4h.
+  2. dayMomentum  — user-configurable watchlist (config.json), per-timeframe.
+  3. custom       — a second, independent watchlist on its own bot.
+
+Dueness is derived from the candle data itself (Kraken's `last` field), not
+from the wall clock, so a late or missed run catches up instead of skipping.
+Kraken 30m/1h/4h boundaries align natively with the 05:30 IST anchor
+(00:00 UTC == 05:30 IST, and IST has no DST).
 """
 
 import os
@@ -12,14 +20,14 @@ import sys
 import json
 import time
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import requests
 
 
 # --------------------------------------------------------------------------- #
 # Load .env (local dev convenience; no external deps).
-# On Render you set real env vars, so this is a no-op there.
+# In GitHub Actions the real env vars come from repository secrets.
 # --------------------------------------------------------------------------- #
 def load_dotenv(path=".env"):
     if not os.path.exists(path):
@@ -40,43 +48,61 @@ def load_dotenv(path=".env"):
 load_dotenv()
 
 # --------------------------------------------------------------------------- #
-# Config (edit these to customize)
+# Config
 # --------------------------------------------------------------------------- #
-SYMBOLS = ["BTCUSDT", "SOLUSDT", "XRPUSDT", "UNIUSDT", "AVAXUSDT"]
-TIMEFRAMES = ["30m", "1h", "4h"]
-MIN_STREAK = 5                  # alert when this many same-color candles in a row
-CHECK_INTERVAL = 30 * 60        # seconds between full scans (30 minutes)
-CANDLE_LIMIT = 50               # how many candles to fetch per request
-TELEGRAM_MSG_DELAY = 0.5        # seconds between Telegram messages (rate limit)
-STATE_FILE = "alert_state.json" # persists which streaks we already alerted on
-SEND_SCAN_SUMMARY = True        # send a Telegram summary after every scan (heartbeat)
+MIN_STREAK = 5                   # ⭐ marks a streak of this length or more
+CANDLE_LIMIT = 120               # closed candles to consider per request
+TELEGRAM_MSG_DELAY = 0.5         # seconds between Telegram messages
+KRAKEN_FETCH_DELAY = 0.25        # seconds between Kraken OHLC requests
+TELEGRAM_MAX_CHARS = 3500        # Telegram hard-limits at 4096; chunk below it
+STATE_FILE = "alert_state.json"  # last reported candle close per stream
+CONFIG_FILE = "config.json"      # watchlists, written by the web frontend
+STATE_TTL_DAYS = 7               # prune state entries older than this
+IST = timezone(timedelta(hours=5, minutes=30))
 
-# Kraken is used as the data source because Binance (HTTP 451) and Bybit
-# (HTTP 403) both geo-block US cloud/data-center IPs such as GitHub Actions
-# runners. Kraken is reachable from those hosts and supports 30m/1h/4h.
+# Kraken is the data source because Binance (HTTP 451) and Bybit (HTTP 403)
+# both geo-block US cloud/data-center IPs such as GitHub Actions runners.
 KRAKEN_OHLC_URL = "https://api.kraken.com/0/public/OHLC"
-# Map our SYMBOLUSDT config names to Kraken USD pair names.
-KRAKEN_PAIRS = {
-    "BTCUSDT": "XBTUSD",
-    "SOLUSDT": "SOLUSD",
-    "XRPUSDT": "XRPUSD",
-    "UNIUSDT": "UNIUSD",
-    "AVAXUSDT": "AVAXUSD",
-}
-# Map our human-readable timeframes to Kraken interval codes (minutes).
-KRAKEN_INTERVALS = {
-    "1m": 1, "5m": 5, "15m": 15, "30m": 30,
-    "1h": 60, "4h": 240, "1d": 1440,
-}
+KRAKEN_INTERVALS = {"30m": 30, "1h": 60, "4h": 240}
+
+# Rule 1: fixed list, in the order it should appear in the message.
+BOT4H_COINS = [
+    ("BTC", "XXBTZUSD"),
+    ("BNB", "BNBUSD"),
+    ("ETH", "XETHZUSD"),
+    ("XRP", "XXRPZUSD"),
+    ("HYPE", "HYPEUSD"),
+    ("UNI", "UNIUSD"),
+    ("XLM", "XXLMZUSD"),
+    ("ADA", "ADAUSD"),
+    ("DOGE", "XDGUSD"),   # Kraken calls DOGE "XDG"
+    ("NEAR", "NEARUSD"),
+]
+BOT4H_TIMEFRAME = "4h"
+
 TELEGRAM_API_BASE = "https://api.telegram.org/bot{token}/sendMessage"
 
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-# TELEGRAM_CHAT_ID can be a single id or several comma-separated ids, e.g.
-# "123456789" or "123456789,987654321" — every id gets the same messages.
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
-TELEGRAM_CHAT_IDS = [
-    cid.strip() for cid in (TELEGRAM_CHAT_ID or "").split(",") if cid.strip()
-]
+# Each stream has its own bot token, and falls back to a shared chat id when it
+# doesn't define its own. A chat id env var may hold several comma-separated
+# ids; every id receives the same message.
+SHARED_CHAT_ENV = "TELEGRAM_CHAT_ID"
+STREAMS = {
+    "bot4h": {
+        "label": "BOT4H",
+        "token_env": "TELEGRAM_BOT_TOKEN_4H",
+        "chat_env": "TELEGRAM_CHAT_ID_4H",
+    },
+    "dayMomentum": {
+        "label": "MomentumBOT",
+        "token_env": "TELEGRAM_BOT_TOKEN_MOMENTUM",
+        "chat_env": "TELEGRAM_CHAT_ID_MOMENTUM",
+    },
+    "custom": {
+        "label": "customTbarBOT",
+        "token_env": "TELEGRAM_BOT_TOKEN_CUSTOM",
+        "chat_env": "TELEGRAM_CHAT_ID_CUSTOM",
+    },
+}
 
 # --------------------------------------------------------------------------- #
 # Logging
@@ -88,100 +114,237 @@ logging.basicConfig(
 )
 log = logging.getLogger("candle_alert_bot")
 
-# Tracks the last streak length we already alerted on, so we only send a new
-# message when the streak grows (5 -> 6 -> 7 ...) and reset when it breaks.
-# Key: (symbol, timeframe) -> (color, last_alerted_length)
-# Persisted to STATE_FILE so it survives across separate cron runs.
-_alert_state = {}
 
-
-def _state_key_str(symbol, timeframe):
-    """JSON keys must be strings, so flatten the (symbol, timeframe) tuple."""
-    return f"{symbol}|{timeframe}"
-
-
+# --------------------------------------------------------------------------- #
+# State
+#
+# Maps a stream key -> the close time (ms) of the last candle already reported.
+# Key format: "bot4h|4h" or "<section>|<pair>|<timeframe>".
+#
+# Rule 1 deliberately uses a SINGLE key for all ten coins: with per-coin keys a
+# single failed fetch would leave that coin "due" on the next 30-minute tick and
+# fire a bogus one-coin report off-boundary.
+# --------------------------------------------------------------------------- #
 def load_state():
-    """Load alert state from STATE_FILE into _alert_state."""
-    _alert_state.clear()
+    """Load alert state. A malformed entry is dropped without losing the rest."""
     if not os.path.exists(STATE_FILE):
-        return
+        return {}
     try:
         with open(STATE_FILE) as fh:
             data = json.load(fh)
-        for key_str, value in data.items():
-            symbol, _, timeframe = key_str.partition("|")
-            _alert_state[(symbol, timeframe)] = (value["color"], value["length"])
     except Exception as exc:  # noqa: BLE001 - corrupt state shouldn't crash the bot
         log.error("Could not read %s (%s); starting fresh.", STATE_FILE, exc)
+        return {}
+
+    state = {}
+    if not isinstance(data, dict):
+        log.error("%s is not a JSON object; starting fresh.", STATE_FILE)
+        return {}
+    for key, value in data.items():
+        try:
+            state[key] = {
+                "last_close_ms": int(value["last_close_ms"]),
+                "updated": str(value["updated"]),
+            }
+        except Exception as exc:  # noqa: BLE001 - isolate per-entry corruption
+            log.warning("Dropping malformed state entry %r (%s).", key, exc)
+    return state
 
 
-def save_state():
-    """Write _alert_state back to STATE_FILE."""
+def prune_state(state, days=STATE_TTL_DAYS):
+    """Drop entries not touched in `days` days, so the file stays bounded."""
+    cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
+    kept = {}
+    for key, value in state.items():
+        try:
+            updated = datetime.fromisoformat(value["updated"].replace("Z", "+00:00"))
+        except Exception:  # noqa: BLE001 - unparseable timestamp: treat as stale
+            log.warning("Pruning state entry %r with unreadable timestamp.", key)
+            continue
+        if updated >= cutoff:
+            kept[key] = value
+        else:
+            log.info("Pruning state entry %r (last updated %s).", key, value["updated"])
+    return kept
+
+
+def save_state(state):
+    """Write state back to STATE_FILE."""
     try:
-        data = {
-            _state_key_str(sym, tf): {"color": color, "length": length}
-            for (sym, tf), (color, length) in _alert_state.items()
-        }
         with open(STATE_FILE, "w") as fh:
-            json.dump(data, fh, indent=2)
+            json.dump(state, fh, indent=2, sort_keys=True)
+            fh.write("\n")
     except Exception as exc:  # noqa: BLE001
         log.error("Could not write %s: %s", STATE_FILE, exc)
+
+
+def mark_reported(state, key, close_ms):
+    state[key] = {
+        "last_close_ms": int(close_ms),
+        "updated": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+
+
+def is_due(state, key, close_ms):
+    """True when this candle close has not been reported yet."""
+    if close_ms is None:
+        return False
+    entry = state.get(key)
+    return entry is None or close_ms > entry["last_close_ms"]
+
+
+# --------------------------------------------------------------------------- #
+# Watchlist config (written by the web frontend)
+# --------------------------------------------------------------------------- #
+def load_config():
+    """
+    Read config.json. Shape:
+        {"dayMomentum": [{"pair": "SOLUSD", "name": "SOL",
+                          "timeframes": ["30m", "1h"]}], "custom": [...]}
+    A missing or malformed file yields empty watchlists rather than an error.
+    """
+    empty = {"dayMomentum": [], "custom": []}
+    if not os.path.exists(CONFIG_FILE):
+        log.warning("%s not found; both watchlists are empty.", CONFIG_FILE)
+        return empty
+    try:
+        with open(CONFIG_FILE) as fh:
+            data = json.load(fh)
+    except Exception as exc:  # noqa: BLE001
+        log.error("Could not read %s (%s); both watchlists are empty.", CONFIG_FILE, exc)
+        return empty
+
+    config = {}
+    for section in ("dayMomentum", "custom"):
+        entries = []
+        for raw in data.get(section) or []:
+            try:
+                pair = str(raw["pair"]).strip()
+                name = str(raw.get("name") or pair).strip()
+                timeframes = [
+                    tf for tf in raw.get("timeframes") or [] if tf in KRAKEN_INTERVALS
+                ]
+                if pair and timeframes:
+                    entries.append(
+                        {"pair": pair, "name": name, "timeframes": timeframes}
+                    )
+                else:
+                    log.warning("Skipping %s entry %r (no pair or no valid timeframe).",
+                                section, raw)
+            except Exception as exc:  # noqa: BLE001 - isolate per-entry corruption
+                log.warning("Skipping malformed %s entry %r (%s).", section, raw, exc)
+        config[section] = entries
+    return config
 
 
 # --------------------------------------------------------------------------- #
 # Telegram
 # --------------------------------------------------------------------------- #
-def send_telegram(text):
+def chunk_message(text, limit=TELEGRAM_MAX_CHARS):
     """
-    Send an HTML message to every chat id in TELEGRAM_CHAT_IDS.
-    Returns True if it reached at least one chat.
+    Split on line boundaries so no chunk exceeds `limit`. Telegram rejects
+    messages over 4096 chars with a 400, which would otherwise be swallowed
+    and leave the user with no message at all.
     """
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_IDS:
+    if len(text) <= limit:
+        return [text]
+    chunks, current = [], ""
+    for line in text.split("\n"):
+        candidate = f"{current}\n{line}" if current else line
+        if len(candidate) > limit and current:
+            chunks.append(current)
+            current = line
+        else:
+            current = candidate
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def get_credentials(stream):
+    """
+    Return (token, [chat_ids]) for a stream, or (None, []) if unconfigured.
+
+    The chat id is normally the same for all three streams (it identifies your
+    Telegram account, not the bot), so a shared TELEGRAM_CHAT_ID is used unless
+    the stream sets its own — which is what you'd do to route one stream to a
+    group while the others stay in your DMs.
+    """
+    spec = STREAMS[stream]
+    token = os.environ.get(spec["token_env"])
+    raw = os.environ.get(spec["chat_env"]) or os.environ.get(SHARED_CHAT_ENV) or ""
+    chat_ids = [cid.strip() for cid in raw.split(",") if cid.strip()]
+    return token, chat_ids
+
+
+def send_telegram(text, token, chat_ids):
+    """
+    Send an HTML message to every chat id. Returns True if every chunk reached
+    at least one chat — state is only advanced on a fully successful send.
+    """
+    if not token or not chat_ids:
         log.error("Telegram credentials missing; cannot send message.")
         return False
-    url = TELEGRAM_API_BASE.format(token=TELEGRAM_BOT_TOKEN)
-    sent_any = False
-    for chat_id in TELEGRAM_CHAT_IDS:
-        try:
-            resp = requests.post(
-                url,
-                data={
-                    "chat_id": chat_id,
-                    "text": text,
-                    "parse_mode": "HTML",
-                    "disable_web_page_preview": True,
-                },
-                timeout=15,
-            )
-            resp.raise_for_status()
-            sent_any = True
-            time.sleep(TELEGRAM_MSG_DELAY)  # gentle rate limiting
-        except Exception as exc:  # noqa: BLE001 - one bad chat shouldn't stop others
-            log.error("Failed to send Telegram message to %s: %s", chat_id, exc)
-    return sent_any
+    url = TELEGRAM_API_BASE.format(token=token)
+    all_ok = True
+    for chunk in chunk_message(text):
+        sent_any = False
+        for chat_id in chat_ids:
+            try:
+                resp = requests.post(
+                    url,
+                    data={
+                        "chat_id": chat_id,
+                        "text": chunk,
+                        "parse_mode": "HTML",
+                        "disable_web_page_preview": True,
+                    },
+                    timeout=15,
+                )
+                resp.raise_for_status()
+                sent_any = True
+                time.sleep(TELEGRAM_MSG_DELAY)  # gentle rate limiting
+            except Exception as exc:  # noqa: BLE001 - one bad chat shouldn't stop others
+                log.error("Failed to send Telegram message to %s: %s", chat_id, exc)
+        all_ok = all_ok and sent_any
+    return all_ok
 
 
 # --------------------------------------------------------------------------- #
 # Market data (Kraken)
 # --------------------------------------------------------------------------- #
-def fetch_candles(symbol, timeframe, limit=CANDLE_LIMIT):
+_candle_cache = {}
+
+
+def fetch_candles(pair, timeframe, limit=CANDLE_LIMIT):
     """
-    Fetch OHLC candles from Kraken. Returns a list of dicts with open/close/
-    close_time for CLOSED candles only (the last, still-forming candle is
-    dropped). Returns None on failure.
+    Fetch closed OHLC candles from Kraken.
+
+    Returns (candles, latest_close_ms), or None on failure. `candles` is
+    oldest-first with open/close/close_time.
+
+    Kraken's `result["last"]` is the START timestamp of the last COMMITTED
+    candle, so rows are selected with `start <= last`. Dropping the final row
+    blindly would be wrong: in the seconds right after a boundary Kraken may
+    not have emitted the new forming row yet, and a genuinely closed candle
+    would be discarded — pushing the reported close time backwards and
+    delaying the alert by a whole period.
     """
-    pair = KRAKEN_PAIRS.get(symbol)
     interval = KRAKEN_INTERVALS.get(timeframe)
-    if pair is None:
-        log.error("Unsupported symbol %s (no Kraken pair mapping).", symbol)
-        return None
     if interval is None:
-        log.error("Unsupported timeframe %s (no Kraken interval mapping).", timeframe)
+        log.error("Unsupported timeframe %s.", timeframe)
         return None
+
+    cache_key = (pair, timeframe)
+    if cache_key in _candle_cache:
+        return _candle_cache[cache_key]
+
+    # `since` trims the response from ~720 rows to what we actually need.
+    since = int(time.time()) - (limit + 2) * interval * 60
     try:
         resp = requests.get(
             KRAKEN_OHLC_URL,
-            params={"pair": pair, "interval": interval},
+            params={"pair": pair, "interval": interval, "since": since},
             timeout=15,
         )
         resp.raise_for_status()
@@ -189,35 +352,47 @@ def fetch_candles(symbol, timeframe, limit=CANDLE_LIMIT):
         if payload.get("error"):
             raise RuntimeError(", ".join(payload["error"]))
         result = payload["result"]
-        # Kraken returns data under a normalized pair key (e.g. XXBTZUSD)
-        # alongside a "last" field — grab whichever key isn't "last".
-        data_key = next(k for k in result if k != "last")
+        last = result.get("last")
+        # Data sits under a normalized pair key (e.g. XXBTZUSD) alongside "last".
+        data_key = next((k for k in result if k != "last"), None)
+        if data_key is None or last is None:
+            raise RuntimeError("no OHLC data in response")
         raw = result[data_key]
     except Exception as exc:  # noqa: BLE001
-        log.error("Failed to fetch candles for %s %s: %s", symbol, timeframe, exc)
+        log.error("Failed to fetch candles for %s %s: %s", pair, timeframe, exc)
+        _candle_cache[cache_key] = None
         return None
+    finally:
+        time.sleep(KRAKEN_FETCH_DELAY)  # Kraken public endpoints are IP rate-limited
 
     # Kraken OHLC row: [time, open, high, low, close, vwap, volume, count].
-    # time is the candle START in seconds; list is oldest-first.
+    # time is the candle START in seconds; the list is oldest-first.
     candles = []
-    for k in raw[-limit:]:
-        start_s = int(k[0])
+    for row in raw:
+        start_s = int(row[0])
+        if start_s > int(last):
+            continue  # still forming
         candles.append(
             {
-                "open": float(k[1]),
-                "close": float(k[4]),
+                "open": float(row[1]),
+                "close": float(row[4]),
                 "close_time": (start_s + interval * 60) * 1000,  # ms
             }
         )
 
-    # Drop the currently forming candle (last one is not yet closed).
-    if candles:
-        candles = candles[:-1]
-    return candles
+    if not candles:
+        log.error("No closed candles returned for %s %s.", pair, timeframe)
+        _candle_cache[cache_key] = None
+        return None
+
+    candles = candles[-limit:]
+    out = (candles, candles[-1]["close_time"])
+    _candle_cache[cache_key] = out
+    return out
 
 
 def candle_color(candle):
-    """Return 'green', 'red', or None (doji / unchanged)."""
+    """Return 'green', 'red', or None (flat / unchanged)."""
     if candle["close"] > candle["open"]:
         return "green"
     if candle["close"] < candle["open"]:
@@ -227,8 +402,12 @@ def candle_color(candle):
 
 def compute_streak(candles):
     """
-    Compute the trailing streak from the most recent closed candle backwards.
-    Returns (color, length). color is None if no streak (e.g. doji at the end).
+    Trailing streak from the most recent closed candle backwards.
+    Returns (color, length); color is None when the last candle is flat.
+
+    A flat candle correctly ends the streak: Kraken fills no-trade periods with
+    zero-volume candles where open == close, and treating those as continuing
+    would show permanent fake streaks on illiquid pairs.
     """
     if not candles:
         return None, 0
@@ -247,174 +426,162 @@ def compute_streak(candles):
 
 
 # --------------------------------------------------------------------------- #
-# Alert formatting
+# Formatting
 # --------------------------------------------------------------------------- #
-def coin_name(symbol):
-    """BTCUSDT -> BTC (strip the USDT quote)."""
-    return symbol[:-4] if symbol.endswith("USDT") else symbol
-
-
 def format_price(price):
     """Format a price with thousands separators and 2 decimals."""
     return f"{price:,.2f}"
 
 
-def build_alert_message(symbol, timeframe, color, length, last_close, close_time_ms):
-    emoji = "🟢" if color == "green" else "🔴"
-    coin = coin_name(symbol)
-    dt = datetime.fromtimestamp(close_time_ms / 1000, tz=timezone.utc)
-    time_str = dt.strftime("%Y-%m-%d %H:%M")
-
-    return (
-        f"{emoji} <b>Candle Streak Alert!</b>\n\n"
-        f"📌 Coin      : <b>{coin}</b>\n"
-        f"⏱ Timeframe : <b>{timeframe}</b>\n"
-        f"🕯 Streak    : <b>{length} consecutive {color} candles</b>\n"
-        f"💰 Last Close: <b>${format_price(last_close)}</b>\n"
-        f"🕒 Time (UTC): <b>{time_str}</b>"
-    )
+def format_close_time(close_ms):
+    """'12:00 UTC (17:30 IST)' — the candle close, never the wall clock."""
+    dt = datetime.fromtimestamp(close_ms / 1000, tz=timezone.utc)
+    return f"{dt.strftime('%Y-%m-%d %H:%M')} UTC ({dt.astimezone(IST).strftime('%H:%M')} IST)"
 
 
-# --------------------------------------------------------------------------- #
-# Core check
-# --------------------------------------------------------------------------- #
-def check_symbol_timeframe(symbol, timeframe, dry_run=False):
-    """
-    Check one symbol/timeframe. Sends an alert if a new/extended streak of
-    MIN_STREAK+ is detected. Returns (color, length) for inspection.
-    """
-    key = (symbol, timeframe)
-    candles = fetch_candles(symbol, timeframe)
-    if candles is None:
-        return None, 0
-
-    color, length = compute_streak(candles)
-    log.info(
-        "Checked %s %s -> streak: %s %s candle(s)",
-        symbol,
-        timeframe,
-        length,
-        color or "none",
-    )
-
-    if dry_run:
-        return color, length
-
-    # No qualifying streak: reset state so the next qualifying streak alerts.
-    if color is None or length < MIN_STREAK:
-        if key in _alert_state:
-            log.info("Streak broken for %s %s; resetting alert state.", symbol, timeframe)
-            _alert_state.pop(key, None)
-        return color, length
-
-    prev_color, prev_len = _alert_state.get(key, (None, 0))
-
-    # Alert if this is a new streak (different color) or it has grown longer.
-    if color != prev_color or length > prev_len:
-        last = candles[-1]
-        msg = build_alert_message(
-            symbol, timeframe, color, length, last["close"], last["close_time"]
-        )
-        if send_telegram(msg):
-            log.info(
-                "ALERT sent: %s %s %d %s candles", symbol, timeframe, length, color
-            )
-            _alert_state[key] = (color, length)
+def format_streak(color, length):
+    """'6🔴 ⭐' — count, color, and a star once the T-bar threshold is hit."""
+    if color == "green":
+        emoji = "🟢"
+    elif color == "red":
+        emoji = "🔴"
     else:
-        log.info(
-            "Streak %s %s already alerted at length %d; skipping.",
-            symbol,
-            timeframe,
-            prev_len,
+        emoji = "⚪"
+    star = " ⭐" if (color and length >= MIN_STREAK) else ""
+    return f"{length}{emoji}{star}"
+
+
+def header(title, close_ms, force):
+    if force:
+        return f"📸 <b>On-demand snapshot</b> — {format_close_time(close_ms)}\n"
+    return f"{title} — {format_close_time(close_ms)}\n"
+
+
+# --------------------------------------------------------------------------- #
+# Streams
+# --------------------------------------------------------------------------- #
+def deliver(stream, message, dry_run):
+    """Send `message` to a stream's bot. Returns True when it was delivered."""
+    label = STREAMS[stream]["label"]
+    if dry_run:
+        print(f"\n----- {label} ({stream}) -----\n{message}\n")
+        return True
+    token, chat_ids = get_credentials(stream)
+    if not token or not chat_ids:
+        # One unconfigured bot must not take down the other two.
+        missing = STREAMS[stream]["token_env"] if not token else (
+            f'{STREAMS[stream]["chat_env"]} (or {SHARED_CHAT_ENV})'
         )
+        log.warning("%s not set; skipping %s.", missing, label)
+        return False
+    if send_telegram(message, token, chat_ids):
+        log.info("Sent %s message.", label)
+        return True
+    log.error("Failed to send %s message.", label)
+    return False
 
-    return color, length
+
+def run_bot4h(state, force=False, dry_run=False):
+    """Rule 1: all ten fixed coins on 4h, as one report per 4h boundary."""
+    key = f"bot4h|{BOT4H_TIMEFRAME}"
+    rows, latest_close = [], None
+
+    for name, pair in BOT4H_COINS:
+        fetched = fetch_candles(pair, BOT4H_TIMEFRAME)
+        if fetched is None:
+            rows.append(f"<b>{name}</b>: ⚠️ unavailable")
+            continue
+        candles, close_ms = fetched
+        color, length = compute_streak(candles)
+        latest_close = close_ms if latest_close is None else max(latest_close, close_ms)
+        rows.append(f"<b>{name}</b>: {format_streak(color, length)}")
+        log.info("bot4h %s 4h -> %s %s", name, length, color or "flat")
+
+    if latest_close is None:
+        log.error("bot4h: every fetch failed; nothing to report.")
+        return
+    if not force and not is_due(state, key, latest_close):
+        log.info("bot4h: 4h candle %s already reported; nothing due.", latest_close)
+        return
+
+    message = header("🕓 <b>4H T-Bar</b>", latest_close, force) + "\n" + "\n".join(rows)
+    delivered = deliver("bot4h", message, dry_run)
+    # --force is a snapshot: it must not consume the scheduled report.
+    if delivered and not force and not dry_run:
+        mark_reported(state, key, latest_close)
 
 
-def build_summary_message(results):
+def run_watchlist(section, state, config, force=False, dry_run=False):
     """
-    Build a compact heartbeat message of every coin/timeframe result.
-    `results` is a dict: (symbol, timeframe) -> (color, length).
+    Rules 2 and 3: report each configured coin on each of its subscribed
+    timeframes, including only what closed at this tick.
     """
-    now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M")
-    lines = [f"🔍 <b>Scan complete</b> — {now} UTC\n"]
-    for symbol in SYMBOLS:
+    entries = config.get(section) or []
+    if not entries:
+        log.info("%s: watchlist is empty; nothing to do.", section)
+        return
+
+    rows, due_keys, latest_close = [], [], None
+
+    for entry in entries:
+        pair, name = entry["pair"], entry["name"]
         parts = []
-        for timeframe in TIMEFRAMES:
-            color, length = results.get((symbol, timeframe), (None, 0))
-            if color == "green":
-                emoji = "🟢"
-            elif color == "red":
-                emoji = "🔴"
-            else:
-                emoji = "⚪"
-            # ⭐ marks a streak that hit the alert threshold
-            star = "⭐" if (color and length >= MIN_STREAK) else ""
-            parts.append(f"{timeframe} {length}{emoji}{star}")
-        lines.append(f"<b>{coin_name(symbol)}</b>: " + " | ".join(parts))
-    return "\n".join(lines)
+        for timeframe in ("30m", "1h", "4h"):
+            if timeframe not in entry["timeframes"]:
+                continue
+            key = f"{section}|{pair}|{timeframe}"
+            fetched = fetch_candles(pair, timeframe)
+            if fetched is None:
+                parts.append(f"{timeframe} ⚠️")
+                continue
+            candles, close_ms = fetched
+            if not force and not is_due(state, key, close_ms):
+                continue  # this timeframe hasn't closed again since last report
+            color, length = compute_streak(candles)
+            parts.append(f"{timeframe} {format_streak(color, length)}")
+            due_keys.append((key, close_ms))
+            latest_close = close_ms if latest_close is None else max(latest_close, close_ms)
+            log.info("%s %s %s -> %s %s", section, name, timeframe, length, color or "flat")
+        if parts:
+            rows.append(f"<b>{name}</b>: " + " | ".join(parts))
+
+    if not rows or latest_close is None:
+        log.info("%s: nothing due at this tick.", section)
+        return
+
+    message = header("🔍 <b>Scan complete</b>", latest_close, force) + "\n" + "\n".join(rows)
+    delivered = deliver(section, message, dry_run)
+    if delivered and not force and not dry_run:
+        for key, close_ms in due_keys:
+            mark_reported(state, key, close_ms)
 
 
-def run_scan():
-    """Run one full scan over all symbols and timeframes (state is persisted)."""
-    log.info("=== Starting scan ===")
-    load_state()
-    results = {}
-    for symbol in SYMBOLS:
-        for timeframe in TIMEFRAMES:
-            try:
-                color, length = check_symbol_timeframe(symbol, timeframe)
-                results[(symbol, timeframe)] = (color, length)
-            except Exception as exc:  # noqa: BLE001 - isolate per-check failures
-                log.error("Error checking %s %s: %s", symbol, timeframe, exc)
-    save_state()
+# --------------------------------------------------------------------------- #
+# Entry point
+# --------------------------------------------------------------------------- #
+def run_scan(force=False, dry_run=False):
+    log.info("=== Starting scan (force=%s, dry_run=%s) ===", force, dry_run)
+    _candle_cache.clear()
+    state = load_state()
+    config = load_config()
 
-    if SEND_SCAN_SUMMARY and results:
-        send_telegram(build_summary_message(results))
-        log.info("Scan summary sent to Telegram.")
+    for runner in (
+        lambda: run_bot4h(state, force=force, dry_run=dry_run),
+        lambda: run_watchlist("dayMomentum", state, config, force=force, dry_run=dry_run),
+        lambda: run_watchlist("custom", state, config, force=force, dry_run=dry_run),
+    ):
+        try:
+            runner()
+        except Exception as exc:  # noqa: BLE001 - one stream must not kill the others
+            log.error("Stream failed: %s", exc, exc_info=True)
+
+    if not dry_run:
+        save_state(prune_state(state))
     log.info("=== Scan complete ===")
 
 
-def _require_credentials():
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_IDS:
-        log.error(
-            "TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set as environment "
-            "variables. Exiting."
-        )
-        raise SystemExit(1)
-
-
-def run_once():
-    """Single scan then exit — used by GitHub Actions / cron schedulers."""
-    _require_credentials()
-    log.info("Running single scan (--once mode).")
-    run_scan()
-    log.info("Single scan finished. Exiting.")
-
-
-def run_forever():
-    """Infinite loop with built-in sleep — used for always-on hosts / local."""
-    _require_credentials()
-    startup = (
-        "🤖 Candle Alert Bot is live! Monitoring BTC, SOL, XRP, UNI, AVAX "
-        "on 30m / 1h / 4h."
-    )
-    send_telegram(startup)
-    log.info("Startup message sent. Beginning monitoring loop.")
-
-    while True:
-        try:
-            run_scan()
-        except Exception as exc:  # noqa: BLE001 - never let the loop die
-            log.error("Unexpected error during scan: %s", exc)
-        log.info("Sleeping %d seconds until next scan.", CHECK_INTERVAL)
-        time.sleep(CHECK_INTERVAL)
-
-
 if __name__ == "__main__":
-    # `--once` = run one scan and exit (GitHub Actions / cron).
-    # no args  = run forever (Render worker / local machine).
-    if "--once" in sys.argv:
-        run_once()
-    else:
-        run_forever()
+    # --force    report every stream's current status regardless of dueness,
+    #            without consuming the next scheduled report (the "Now" button).
+    # --dry-run  print the messages instead of sending; never touches state.
+    run_scan(force="--force" in sys.argv, dry_run="--dry-run" in sys.argv)

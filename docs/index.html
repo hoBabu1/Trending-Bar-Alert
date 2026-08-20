@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T-Bar Alerts</title>
+<style>
+  :root {
+    --bg: #0f1420; --panel: #171d2b; --panel2: #1f2637; --line: #2b3448;
+    --fg: #e6ebf5; --dim: #93a0b8; --accent: #4c8dff; --green: #3ddc84;
+    --red: #ff6b6b; --amber: #ffc457;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px 64px; background: var(--bg); color: var(--fg);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0; }
+  .sub { color: var(--dim); font-size: 13px; margin: 0 0 20px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px; margin-bottom: 16px;
+  }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .muted { color: var(--dim); font-size: 12px; }
+  label { display: block; font-size: 12px; color: var(--dim); margin-bottom: 4px; }
+  input[type=text], input[type=password] {
+    width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--panel2); color: var(--fg); font: inherit; font-size: 14px;
+  }
+  input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  button {
+    padding: 8px 14px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--panel2); color: var(--fg); font: inherit; cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #06101f; font-weight: 600; }
+  button.ghost { background: none; }
+  button.danger { background: none; color: var(--red); border-color: transparent; padding: 4px 8px; }
+  .row {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 10px 0; border-top: 1px solid var(--line);
+  }
+  .row:first-of-type { border-top: none; }
+  .coin { font-weight: 600; min-width: 120px; }
+  .coin small { display: block; font-weight: 400; color: var(--dim); font-size: 11px; }
+  .tfs { display: flex; gap: 10px; flex: 1; }
+  .tf { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--dim); cursor: pointer; }
+  .tf input { accent-color: var(--accent); cursor: pointer; }
+  .tf.on { color: var(--fg); }
+  .picker { position: relative; margin-top: 10px; }
+  .results {
+    position: absolute; z-index: 10; left: 0; right: 0; top: 100%; margin-top: 4px;
+    max-height: 260px; overflow-y: auto; background: var(--panel2);
+    border: 1px solid var(--line); border-radius: 6px;
+  }
+  .results div { padding: 8px 10px; cursor: pointer; font-size: 14px; }
+  .results div:hover, .results div.sel { background: var(--accent); color: #06101f; }
+  .empty { color: var(--dim); font-size: 13px; padding: 8px 0; }
+  .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  #status { min-height: 20px; font-size: 13px; margin-top: 12px; }
+  .ok { color: var(--green); } .err { color: var(--red); } .warn { color: var(--amber); }
+  details summary { cursor: pointer; color: var(--dim); font-size: 13px; }
+  .note { font-size: 12px; color: var(--dim); margin-top: 10px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>T-Bar Alerts</h1>
+  <p class="sub">Pick coins and timeframes. Alerts fire on each candle close, anchored to 05:30 IST.</p>
+
+  <details class="card" id="settings">
+    <summary>Connection settings</summary>
+    <div class="grid" style="margin-top:14px">
+      <div><label for="owner">Owner</label><input type="text" id="owner"></div>
+      <div><label for="repo">Repo</label><input type="text" id="repo"></div>
+      <div><label for="branch">Branch</label><input type="text" id="branch"></div>
+    </div>
+    <div style="margin-top:10px">
+      <label for="pat">Fine-grained PAT &mdash; Contents: read/write, Actions: read/write</label>
+      <input type="password" id="pat" placeholder="github_pat_...">
+    </div>
+    <p class="note">
+      The token is kept in this browser's localStorage and sent only to api.github.com.
+      Scope it to this repository alone and give it a short expiry: a project Pages site
+      shares one origin with every other project page under your account.
+    </p>
+    <div class="bar" style="margin-top:10px">
+      <button class="primary" id="saveSettings">Save settings</button>
+      <button class="ghost" id="clearPat">Forget token</button>
+    </div>
+  </details>
+
+  <div class="card" id="card-dayMomentum"></div>
+  <div class="card" id="card-custom"></div>
+
+  <div class="bar">
+    <button class="primary" id="save">Save to GitHub</button>
+    <button id="now">Now &mdash; send snapshot</button>
+    <button class="ghost" id="reload">Reload</button>
+  </div>
+  <div id="status"></div>
+</div>
+
+<script>
+"use strict";
+const TFS = ["30m", "1h", "4h"];
+const SECTIONS = { dayMomentum: "DayMomentum", custom: "Custom" };
+const MAX_COINS = 25;
+const WORKFLOW = "candle-alert.yml";
+const LS = "tbar.settings";
+
+let cfg = { dayMomentum: [], custom: [] };
+let sha = null;
+let pairs = [];
+let openPicker = null;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function say(msg, cls = "") {
+  $("status").className = cls;
+  $("status").textContent = msg;
+}
+
+/* ---------- settings ---------- */
+function guessRepo() {
+  const m = location.hostname.match(/^([^.]+)\.github\.io$/);
+  const path = location.pathname.split("/").filter(Boolean);
+  return { owner: m ? m[1] : "", repo: m && path.length ? path[0] : "", branch: "master" };
+}
+function loadSettings() {
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem(LS) || "{}"); } catch (e) { s = {}; }
+  const g = guessRepo();
+  $("owner").value = s.owner || g.owner;
+  $("repo").value = s.repo || g.repo;
+  $("branch").value = s.branch || g.branch;
+  $("pat").value = s.pat || "";
+  if (!s.pat) $("settings").open = true;
+}
+function settings() {
+  return {
+    owner: $("owner").value.trim(), repo: $("repo").value.trim(),
+    branch: $("branch").value.trim() || "master", pat: $("pat").value.trim(),
+  };
+}
+function saveSettings() {
+  localStorage.setItem(LS, JSON.stringify(settings()));
+}
+
+/* ---------- github ---------- */
+async function gh(path, opts = {}) {
+  const s = settings();
+  if (!s.owner || !s.repo) throw new Error("Set the owner and repo in connection settings.");
+  if (!s.pat) throw new Error("Add a GitHub token in connection settings.");
+  const res = await fetch(`https://api.github.com/repos/${s.owner}/${s.repo}${path}`, {
+    ...opts,
+    headers: {
+      Authorization: `Bearer ${s.pat}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      ...(opts.body ? { "Content-Type": "application/json" } : {}),
+    },
+  });
+  if (res.status === 401) {
+    localStorage.removeItem(LS);
+    $("pat").value = "";
+    $("settings").open = true;
+    throw new Error("Token rejected (401). It has been cleared — paste a fresh one.");
+  }
+  return res;
+}
+
+async function fetchConfig() {
+  const s = settings();
+  const res = await gh(`/contents/config.json?ref=${encodeURIComponent(s.branch)}`);
+  if (res.status === 404) { sha = null; return { dayMomentum: [], custom: [] }; }
+  if (!res.ok) throw new Error(`Could not read config.json (HTTP ${res.status}).`);
+  const body = await res.json();
+  sha = body.sha;
+  const decoded = decodeURIComponent(escape(atob(body.content.replace(/\n/g, ""))));
+  const data = JSON.parse(decoded);
+  return { dayMomentum: data.dayMomentum || [], custom: data.custom || [] };
+}
+
+async function putConfig(retried) {
+  const s = settings();
+  const json = JSON.stringify(cfg, null, 2) + "\n";
+  const res = await gh("/contents/config.json", {
+    method: "PUT",
+    body: JSON.stringify({
+      message: "chore: update alert watchlists",
+      content: btoa(unescape(encodeURIComponent(json))),
+      branch: s.branch,
+      ...(sha ? { sha } : {}),
+    }),
+  });
+  if (res.ok) { sha = (await res.json()).content.sha; return; }
+  // 409/422 means the blob moved under us — refresh the sha and try once more.
+  if ((res.status === 409 || res.status === 422) && !retried) {
+    await fetchConfig();
+    return putConfig(true);
+  }
+  const detail = await res.text();
+  throw new Error(res.status === 409 || res.status === 422
+    ? "config.json changed in GitHub while you were editing. Press Reload, then re-apply your changes."
+    : `Save failed (HTTP ${res.status}). ${detail.slice(0, 160)}`);
+}
+
+/* ---------- kraken ---------- */
+async function loadPairs() {
+  const res = await fetch("https://api.kraken.com/0/public/AssetPairs");
+  const body = await res.json();
+  if (body.error && body.error.length) throw new Error(body.error.join(", "));
+  pairs = Object.entries(body.result)
+    .filter(([, v]) => v.wsname && v.wsname.endsWith("/USD") && v.status === "online")
+    .map(([id, v]) => ({ id, name: v.wsname.split("/")[0] }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/* ---------- render ---------- */
+function render() {
+  for (const [key, title] of Object.entries(SECTIONS)) {
+    const card = $(`card-${key}`);
+    const list = cfg[key];
+    const rows = list.length
+      ? list.map((e, i) => `
+        <div class="row">
+          <div class="coin">${esc(e.name)}<small>${esc(e.pair)}</small></div>
+          <div class="tfs">${TFS.map((tf) => `
+            <label class="tf ${e.timeframes.includes(tf) ? "on" : ""}">
+              <input type="checkbox" data-sec="${key}" data-i="${i}" data-tf="${tf}"
+                ${e.timeframes.includes(tf) ? "checked" : ""}>${tf}
+            </label>`).join("")}</div>
+          <button class="danger" data-del="${key}" data-i="${i}">Remove</button>
+        </div>`).join("")
+      : `<div class="empty">No coins yet — add one below.</div>`;
+
+    card.innerHTML = `
+      <div class="card-head">
+        <h2>${title}</h2>
+        <span class="muted">${list.length}/${MAX_COINS}</span>
+      </div>
+      ${rows}
+      <div class="picker">
+        <button data-add="${key}" ${list.length >= MAX_COINS ? "disabled" : ""}>+ Add symbol</button>
+        <div data-box="${key}"></div>
+      </div>`;
+  }
+  if (openPicker) showPicker(openPicker);
+}
+
+function showPicker(key) {
+  openPicker = key;
+  const box = document.querySelector(`[data-box="${key}"]`);
+  box.innerHTML = `<input type="text" data-search="${key}" placeholder="Search ${pairs.length} Kraken USD pairs…" autocomplete="off" style="margin-top:8px">
+                   <div class="results" data-results="${key}"></div>`;
+  const input = box.querySelector("input");
+  input.focus();
+  input.addEventListener("input", () => filterPicker(key, input.value));
+  input.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") { openPicker = null; render(); }
+  });
+  filterPicker(key, "");
+}
+
+function filterPicker(key, q) {
+  const taken = new Set(cfg[key].map((e) => e.pair));
+  const term = q.trim().toUpperCase();
+  const hits = pairs
+    .filter((p) => !taken.has(p.id) && (!term || p.name.includes(term)))
+    .slice(0, 60);
+  const box = document.querySelector(`[data-results="${key}"]`);
+  box.innerHTML = hits.length
+    ? hits.map((p) => `<div data-pick="${key}" data-pair="${esc(p.id)}" data-name="${esc(p.name)}">${esc(p.name)} <span class="muted">${esc(p.id)}</span></div>`).join("")
+    : `<div class="empty" style="padding:10px">No match.</div>`;
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", (ev) => {
+  const t = ev.target.closest("[data-add],[data-del],[data-pick]");
+  if (!t) {
+    if (openPicker && !ev.target.closest(".picker")) { openPicker = null; render(); }
+    return;
+  }
+  if (t.dataset.add) { showPicker(t.dataset.add); return; }
+  if (t.dataset.del) {
+    cfg[t.dataset.del].splice(Number(t.dataset.i), 1);
+    openPicker = null; render(); say("Removed — press Save to apply.", "warn");
+    return;
+  }
+  const sec = t.dataset.pick;
+  if (cfg[sec].length >= MAX_COINS) { say(`${SECTIONS[sec]} is capped at ${MAX_COINS} coins.`, "err"); return; }
+  cfg[sec].push({ pair: t.dataset.pair, name: t.dataset.name, timeframes: ["30m"] });
+  openPicker = null; render(); say("Added — press Save to apply.", "warn");
+});
+
+document.addEventListener("change", (ev) => {
+  const cb = ev.target;
+  if (!cb.dataset || !cb.dataset.tf) return;
+  const entry = cfg[cb.dataset.sec][Number(cb.dataset.i)];
+  entry.timeframes = cb.checked
+    ? [...entry.timeframes, cb.dataset.tf].filter((v, i, a) => a.indexOf(v) === i)
+    : entry.timeframes.filter((tf) => tf !== cb.dataset.tf);
+  entry.timeframes.sort((a, b) => TFS.indexOf(a) - TFS.indexOf(b));
+  render(); say("Changed — press Save to apply.", "warn");
+});
+
+$("saveSettings").addEventListener("click", async () => {
+  saveSettings();
+  $("settings").open = false;
+  await reload();
+});
+$("clearPat").addEventListener("click", () => {
+  localStorage.removeItem(LS);
+  $("pat").value = "";
+  say("Token forgotten.", "ok");
+});
+
+$("save").addEventListener("click", async () => {
+  const empty = Object.entries(cfg).filter(([, v]) => v.some((e) => !e.timeframes.length));
+  if (empty.length) { say("Every coin needs at least one timeframe.", "err"); return; }
+  $("save").disabled = true;
+  try {
+    say("Saving…");
+    await putConfig(false);
+    say("Saved to config.json.", "ok");
+  } catch (e) { say(e.message, "err"); }
+  $("save").disabled = false;
+});
+
+$("now").addEventListener("click", async () => {
+  $("now").disabled = true;
+  try {
+    say("Triggering snapshot…");
+    const s = settings();
+    const res = await gh(`/actions/workflows/${WORKFLOW}/dispatches`, {
+      method: "POST",
+      body: JSON.stringify({ ref: s.branch, inputs: { force: "true" } }),
+    });
+    if (res.status === 204) say("Snapshot running — check Telegram in a minute.", "ok");
+    else say(`Trigger failed (HTTP ${res.status}). ${(await res.text()).slice(0, 160)}`, "err");
+  } catch (e) { say(e.message, "err"); }
+  $("now").disabled = false;
+});
+
+async function reload() {
+  try {
+    say("Loading…");
+    if (!pairs.length) await loadPairs();
+    cfg = await fetchConfig();
+    openPicker = null;
+    render();
+    say(`Loaded — ${cfg.dayMomentum.length} in DayMomentum, ${cfg.custom.length} in Custom.`, "ok");
+  } catch (e) {
+    render();
+    say(e.message, "err");
+  }
+}
+$("reload").addEventListener("click", reload);
+
+loadSettings();
+render();
+reload();
+</script>
+</body>
+</html>
