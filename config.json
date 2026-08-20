@@ -1,4 +1,12 @@
 {
-  "dayMomentum": [],
+  "dayMomentum": [
+    {
+      "pair": "XBTUSDT",
+      "name": "BTC",
+      "timeframes": [
+        "30m"
+      ]
+    }
+  ],
   "custom": []
 }
