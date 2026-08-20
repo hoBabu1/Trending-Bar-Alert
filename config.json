@@ -8,5 +8,23 @@
       ]
     }
   ],
-  "custom": []
+  "custom": [
+    {
+      "pair": "ETHUSDT",
+      "name": "ETH",
+      "timeframes": [
+        "1h",
+        "4h"
+      ]
+    },
+    {
+      "pair": "XDGUSDT",
+      "name": "DOGE",
+      "timeframes": [
+        "30m",
+        "1h",
+        "4h"
+      ]
+    }
+  ]
 }
