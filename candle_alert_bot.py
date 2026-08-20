@@ -325,7 +325,15 @@ def send_telegram(text, token, chat_ids):
                 sent_any = True
                 time.sleep(TELEGRAM_MSG_DELAY)  # gentle rate limiting
             except Exception as exc:  # noqa: BLE001 - one bad chat shouldn't stop others
-                log.error("Failed to send Telegram message to %s: %s", chat_id, exc)
+                # Telegram puts the real reason in the body ("chat not found",
+                # "bot can't initiate conversation with a user", ...); the bare
+                # status code alone doesn't say which.
+                reason = ""
+                try:
+                    reason = f" — {resp.json().get('description', '')}"
+                except Exception:  # noqa: BLE001
+                    pass
+                log.error("Failed to send to chat %s: %s%s", chat_id, exc, reason)
         all_ok = all_ok and sent_any
     return all_ok
 
