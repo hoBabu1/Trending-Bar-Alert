@@ -16,15 +16,15 @@
     "updated": "2026-08-20T16:01:00Z"
   },
   "custom|XDGUSDT|30m": {
-    "last_close_ms": 1787241600000,
-    "updated": "2026-08-20T16:01:00Z"
+    "last_close_ms": 1787243400000,
+    "updated": "2026-08-20T16:30:48Z"
   },
   "custom|XDGUSDT|4h": {
     "last_close_ms": 1787241600000,
     "updated": "2026-08-20T16:01:00Z"
   },
   "dayMomentum|XBTUSDT|30m": {
-    "last_close_ms": 1787241600000,
-    "updated": "2026-08-20T16:00:57Z"
+    "last_close_ms": 1787243400000,
+    "updated": "2026-08-20T16:30:45Z"
   }
 }
