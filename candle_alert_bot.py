@@ -65,20 +65,40 @@ IST = timezone(timedelta(hours=5, minutes=30))
 KRAKEN_OHLC_URL = "https://api.kraken.com/0/public/OHLC"
 KRAKEN_INTERVALS = {"30m": 30, "1h": 60, "4h": 240}
 
-# Rule 1: fixed list, in the order it should appear in the message.
-BOT4H_COINS = [
-    ("BTC", "XXBTZUSD"),
-    ("BNB", "BNBUSD"),
-    ("ETH", "XETHZUSD"),
-    ("XRP", "XXRPZUSD"),
+# The single supported coin list, shared with the frontend's picker. USDT pairs
+# are used where Kraken has one; HYPE, UNI, XLM and NEAR are USD-only there.
+COINS_FILE = os.path.join("docs", "coins.json")
+FALLBACK_COINS = [
+    ("BTC", "XBTUSDT"),
+    ("BNB", "BNBUSDT"),
+    ("ETH", "ETHUSDT"),
+    ("XRP", "XRPUSDT"),
     ("HYPE", "HYPEUSD"),
     ("UNI", "UNIUSD"),
     ("XLM", "XXLMZUSD"),
-    ("ADA", "ADAUSD"),
-    ("DOGE", "XDGUSD"),   # Kraken calls DOGE "XDG"
+    ("ADA", "ADAUSDT"),
+    ("DOGE", "XDGUSDT"),   # Kraken calls DOGE "XDG"
     ("NEAR", "NEARUSD"),
 ]
 BOT4H_TIMEFRAME = "4h"
+
+
+def load_coins():
+    """
+    Read docs/coins.json — the one list both this scanner and the web picker
+    use, so they can never disagree about which pair backs a coin. Falls back
+    to the built-in list if the file is missing or unreadable.
+    """
+    try:
+        with open(COINS_FILE) as fh:
+            data = json.load(fh)
+        coins = [(str(c["name"]), str(c["pair"])) for c in data]
+        if not coins:
+            raise ValueError("empty list")
+        return coins
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Could not read %s (%s); using the built-in list.", COINS_FILE, exc)
+        return list(FALLBACK_COINS)
 
 TELEGRAM_API_BASE = "https://api.telegram.org/bot{token}/sendMessage"
 
@@ -486,7 +506,7 @@ def run_bot4h(state, force=False, dry_run=False):
     key = f"bot4h|{BOT4H_TIMEFRAME}"
     rows, latest_close = [], None
 
-    for name, pair in BOT4H_COINS:
+    for name, pair in load_coins():
         fetched = fetch_candles(pair, BOT4H_TIMEFRAME)
         if fetched is None:
             rows.append(f"<b>{name}</b>: ⚠️ unavailable")

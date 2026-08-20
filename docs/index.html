@@ -55,7 +55,7 @@
   .picker { position: relative; margin-top: 10px; }
   .results {
     position: absolute; z-index: 10; left: 0; right: 0; top: 100%; margin-top: 4px;
-    max-height: 260px; overflow-y: auto; background: var(--panel2);
+    max-height: 200px; overflow-y: auto; background: var(--panel2);
     border: 1px solid var(--line); border-radius: 6px;
   }
   .results div { padding: 8px 10px; cursor: pointer; font-size: 14px; }
@@ -213,15 +213,13 @@ async function putConfig(retried) {
     : `Save failed (HTTP ${res.status}). ${detail.slice(0, 160)}`);
 }
 
-/* ---------- kraken ---------- */
+/* ---------- coin list ---------- */
+// coins.json sits next to this page and is the same file the scanner reads,
+// so the picker can never offer a coin the backend doesn't know.
 async function loadPairs() {
-  const res = await fetch("https://api.kraken.com/0/public/AssetPairs");
-  const body = await res.json();
-  if (body.error && body.error.length) throw new Error(body.error.join(", "));
-  pairs = Object.entries(body.result)
-    .filter(([, v]) => v.wsname && v.wsname.endsWith("/USD") && v.status === "online")
-    .map(([id, v]) => ({ id, name: v.wsname.split("/")[0] }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const res = await fetch("coins.json", { cache: "no-cache" });
+  if (!res.ok) throw new Error(`Could not load coins.json (HTTP ${res.status}).`);
+  pairs = (await res.json()).map((c) => ({ id: c.pair, name: c.name, quote: c.quote }));
 }
 
 /* ---------- render ---------- */
@@ -259,7 +257,7 @@ function render() {
 function showPicker(key) {
   openPicker = key;
   const box = document.querySelector(`[data-box="${key}"]`);
-  box.innerHTML = `<input type="text" data-search="${key}" placeholder="Search ${pairs.length} Kraken USD pairs…" autocomplete="off" style="margin-top:8px">
+  box.innerHTML = `<input type="text" data-search="${key}" placeholder="Search ${pairs.length} coins…" autocomplete="off" style="margin-top:8px">
                    <div class="results" data-results="${key}"></div>`;
   const input = box.querySelector("input");
   input.focus();
@@ -275,7 +273,6 @@ function filterPicker(key, q) {
   const term = q.trim().toUpperCase();
   const hits = pairs
     .filter((p) => !taken.has(p.id) && (!term || p.name.includes(term)))
-    .slice(0, 60);
   const box = document.querySelector(`[data-results="${key}"]`);
   box.innerHTML = hits.length
     ? hits.map((p) => `<div data-pick="${key}" data-pair="${esc(p.id)}" data-name="${esc(p.name)}">${esc(p.name)} <span class="muted">${esc(p.id)}</span></div>`).join("")
@@ -292,13 +289,13 @@ document.addEventListener("click", (ev) => {
   if (t.dataset.add) { showPicker(t.dataset.add); return; }
   if (t.dataset.del) {
     cfg[t.dataset.del].splice(Number(t.dataset.i), 1);
-    openPicker = null; render(); say("Removed — press Save to apply.", "warn");
+    openPicker = null; render(); say("Removed — press “Save to GitHub” to apply.", "warn");
     return;
   }
   const sec = t.dataset.pick;
   if (cfg[sec].length >= MAX_COINS) { say(`${SECTIONS[sec]} is capped at ${MAX_COINS} coins.`, "err"); return; }
   cfg[sec].push({ pair: t.dataset.pair, name: t.dataset.name, timeframes: ["30m"] });
-  openPicker = null; render(); say("Added — press Save to apply.", "warn");
+  openPicker = null; render(); say("Added — press “Save to GitHub” to apply.", "warn");
 });
 
 document.addEventListener("change", (ev) => {
@@ -309,7 +306,7 @@ document.addEventListener("change", (ev) => {
     ? [...entry.timeframes, cb.dataset.tf].filter((v, i, a) => a.indexOf(v) === i)
     : entry.timeframes.filter((tf) => tf !== cb.dataset.tf);
   entry.timeframes.sort((a, b) => TFS.indexOf(a) - TFS.indexOf(b));
-  render(); say("Changed — press Save to apply.", "warn");
+  render(); say("Changed — press “Save to GitHub” to apply.", "warn");
 });
 
 $("saveSettings").addEventListener("click", async () => {
