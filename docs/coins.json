@@ -1,12 +1,13 @@
 [
-  { "name": "BTC",  "pair": "XBTUSDT",  "quote": "USDT" },
-  { "name": "BNB",  "pair": "BNBUSDT",  "quote": "USDT" },
-  { "name": "ETH",  "pair": "ETHUSDT",  "quote": "USDT" },
-  { "name": "XRP",  "pair": "XRPUSDT",  "quote": "USDT" },
-  { "name": "HYPE", "pair": "HYPEUSD",  "quote": "USD"  },
-  { "name": "UNI",  "pair": "UNIUSD",   "quote": "USD"  },
-  { "name": "XLM",  "pair": "XXLMZUSD", "quote": "USD"  },
-  { "name": "ADA",  "pair": "ADAUSDT",  "quote": "USDT" },
-  { "name": "DOGE", "pair": "XDGUSDT",  "quote": "USDT" },
-  { "name": "NEAR", "pair": "NEARUSD",  "quote": "USD"  }
+  { "name": "BTC",   "pair": "XBTUSDT",  "quote": "USDT" },
+  { "name": "BNB",   "pair": "BNBUSDT",  "quote": "USDT" },
+  { "name": "ETH",   "pair": "ETHUSDT",  "quote": "USDT" },
+  { "name": "XRP",   "pair": "XRPUSDT",  "quote": "USDT" },
+  { "name": "HYPE",  "pair": "HYPEUSD",  "quote": "USD"  },
+  { "name": "UNI",   "pair": "UNIUSD",   "quote": "USD"  },
+  { "name": "XLM",   "pair": "XXLMZUSD", "quote": "USD"  },
+  { "name": "ADA",   "pair": "ADAUSDT",  "quote": "USDT" },
+  { "name": "DOGE",  "pair": "XDGUSDT",  "quote": "USDT" },
+  { "name": "NEAR",  "pair": "NEARUSD",  "quote": "USD"  },
+  { "name": "AVAX",  "pair": "AVAXUSD",  "quote": "USD"  }
 ]
