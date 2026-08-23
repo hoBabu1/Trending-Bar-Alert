@@ -26,5 +26,13 @@
   "dayMomentum|XBTUSDT|30m": {
     "last_close_ms": 1787272200000,
     "updated": "2026-08-21T00:30:46Z"
+  },
+  "dayMomentum|XRPUSDT|1h": {
+    "last_close_ms": 1787443200000,
+    "updated": "2026-08-23T00:30:45Z"
+  },
+  "dayMomentum|XRPUSDT|30m": {
+    "last_close_ms": 1787445000000,
+    "updated": "2026-08-23T00:30:45Z"
   }
 }
