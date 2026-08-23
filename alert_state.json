@@ -11,6 +11,18 @@
     "last_close_ms": 1787241600000,
     "updated": "2026-08-20T16:01:00Z"
   },
+  "custom|SOLUSDT|1h": {
+    "last_close_ms": 1787461200000,
+    "updated": "2026-08-23T05:05:07Z"
+  },
+  "custom|SOLUSDT|30m": {
+    "last_close_ms": 1787461200000,
+    "updated": "2026-08-23T05:05:07Z"
+  },
+  "custom|SOLUSDT|4h": {
+    "last_close_ms": 1787457600000,
+    "updated": "2026-08-23T05:05:07Z"
+  },
   "custom|XDGUSDT|1h": {
     "last_close_ms": 1787245200000,
     "updated": "2026-08-20T17:00:56Z"
@@ -22,6 +34,14 @@
   "custom|XDGUSDT|4h": {
     "last_close_ms": 1787241600000,
     "updated": "2026-08-20T16:01:00Z"
+  },
+  "dayMomentum|SOLUSDT|1h": {
+    "last_close_ms": 1787461200000,
+    "updated": "2026-08-23T05:05:05Z"
+  },
+  "dayMomentum|SOLUSDT|30m": {
+    "last_close_ms": 1787461200000,
+    "updated": "2026-08-23T05:05:05Z"
   },
   "dayMomentum|XBTUSDT|30m": {
     "last_close_ms": 1787272200000,
