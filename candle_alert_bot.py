@@ -70,6 +70,7 @@ KRAKEN_INTERVALS = {"30m": 30, "1h": 60, "4h": 240}
 COINS_FILE = os.path.join("docs", "coins.json")
 FALLBACK_COINS = [
     ("BTC", "XBTUSDT"),
+    ("SOL", "SOLUSDT"),
     ("BNB", "BNBUSDT"),
     ("ETH", "ETHUSDT"),
     ("XRP", "XRPUSDT"),

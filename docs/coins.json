@@ -1,5 +1,6 @@
 [
   { "name": "BTC",  "pair": "XBTUSDT",  "quote": "USDT"},
+  { "name": "SOL",  "pair": "SOLUSDT",  "quote": "USDT"},
   { "name": "BNB",  "pair": "BNBUSDT",  "quote": "USDT"},
   { "name": "ETH",  "pair": "ETHUSDT",  "quote": "USDT"},
   { "name": "XRP",  "pair": "XRPUSDT",  "quote": "USDT"},
