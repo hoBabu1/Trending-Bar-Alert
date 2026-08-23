@@ -17,15 +17,5 @@
       ]
     }
   ],
-  "custom": [
-    {
-      "pair": "SOLUSDT",
-      "name": "SOL",
-      "timeframes": [
-        "30m",
-        "1h",
-        "4h"
-      ]
-    }
-  ]
+  "custom": []
 }
