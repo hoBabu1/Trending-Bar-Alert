@@ -1,21 +1,4 @@
 {
-  "dayMomentum": [
-    {
-      "pair": "XRPUSDT",
-      "name": "XRP",
-      "timeframes": [
-        "30m",
-        "1h"
-      ]
-    },
-    {
-      "pair": "SOLUSDT",
-      "name": "SOL",
-      "timeframes": [
-        "30m",
-        "1h"
-      ]
-    }
-  ],
+  "dayMomentum": [],
   "custom": []
 }
