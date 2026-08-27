@@ -1,7 +1,7 @@
 {
   "bot4h|4h": {
-    "last_close_ms": 1787846400000,
-    "updated": "2026-08-27T16:01:00Z"
+    "last_close_ms": 1787860800000,
+    "updated": "2026-08-27T20:00:53Z"
   },
   "custom|SOLUSDT|1h": {
     "last_close_ms": 1787468400000,
@@ -36,11 +36,11 @@
     "updated": "2026-08-21T00:30:46Z"
   },
   "dayMomentum|XRPUSDT|1h": {
-    "last_close_ms": 1787857200000,
-    "updated": "2026-08-27T19:00:57Z"
+    "last_close_ms": 1787860800000,
+    "updated": "2026-08-27T20:00:56Z"
   },
   "dayMomentum|XRPUSDT|30m": {
-    "last_close_ms": 1787859000000,
-    "updated": "2026-08-27T19:30:49Z"
+    "last_close_ms": 1787860800000,
+    "updated": "2026-08-27T20:00:56Z"
   }
 }
