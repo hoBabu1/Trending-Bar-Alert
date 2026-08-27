@@ -1,7 +1,7 @@
 {
   "bot4h|4h": {
-    "last_close_ms": 1787788800000,
-    "updated": "2026-08-27T00:01:03Z"
+    "last_close_ms": 1787803200000,
+    "updated": "2026-08-27T04:00:55Z"
   },
   "custom|ETHUSDT|1h": {
     "last_close_ms": 1787245200000,
@@ -56,11 +56,11 @@
     "updated": "2026-08-21T00:30:46Z"
   },
   "dayMomentum|XRPUSDT|1h": {
-    "last_close_ms": 1787799600000,
-    "updated": "2026-08-27T03:00:56Z"
+    "last_close_ms": 1787803200000,
+    "updated": "2026-08-27T04:00:58Z"
   },
   "dayMomentum|XRPUSDT|30m": {
-    "last_close_ms": 1787801400000,
-    "updated": "2026-08-27T03:30:48Z"
+    "last_close_ms": 1787803200000,
+    "updated": "2026-08-27T04:00:58Z"
   }
 }
