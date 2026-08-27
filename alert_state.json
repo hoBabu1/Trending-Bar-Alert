@@ -1,15 +1,11 @@
 {
   "bot4h|4h": {
-    "last_close_ms": 1787832000000,
-    "updated": "2026-08-27T12:00:57Z"
+    "last_close_ms": 1787846400000,
+    "updated": "2026-08-27T16:01:00Z"
   },
   "custom|ETHUSDT|1h": {
     "last_close_ms": 1787245200000,
     "updated": "2026-08-20T17:00:56Z"
-  },
-  "custom|ETHUSDT|4h": {
-    "last_close_ms": 1787241600000,
-    "updated": "2026-08-20T16:01:00Z"
   },
   "custom|SOLUSDT|1h": {
     "last_close_ms": 1787468400000,
@@ -30,10 +26,6 @@
   "custom|XDGUSDT|30m": {
     "last_close_ms": 1787245200000,
     "updated": "2026-08-20T17:00:56Z"
-  },
-  "custom|XDGUSDT|4h": {
-    "last_close_ms": 1787241600000,
-    "updated": "2026-08-20T16:01:00Z"
   },
   "dayMomentum|BNBUSDT|1h": {
     "last_close_ms": 1787680800000,
@@ -56,11 +48,11 @@
     "updated": "2026-08-21T00:30:46Z"
   },
   "dayMomentum|XRPUSDT|1h": {
-    "last_close_ms": 1787842800000,
-    "updated": "2026-08-27T15:01:01Z"
+    "last_close_ms": 1787846400000,
+    "updated": "2026-08-27T16:01:03Z"
   },
   "dayMomentum|XRPUSDT|30m": {
-    "last_close_ms": 1787844600000,
-    "updated": "2026-08-27T15:30:47Z"
+    "last_close_ms": 1787846400000,
+    "updated": "2026-08-27T16:01:03Z"
   }
 }
