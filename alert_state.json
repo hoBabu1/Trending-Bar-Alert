@@ -28,8 +28,8 @@
     "updated": "2026-08-28T00:22:47Z"
   },
   "dayMomentum|ETHUSDT|30m": {
-    "last_close_ms": 1787875200000,
-    "updated": "2026-08-28T00:22:47Z"
+    "last_close_ms": 1787877000000,
+    "updated": "2026-08-28T00:30:47Z"
   },
   "dayMomentum|SOLUSDT|1h": {
     "last_close_ms": 1787529600000,
@@ -38,10 +38,6 @@
   "dayMomentum|SOLUSDT|30m": {
     "last_close_ms": 1787531400000,
     "updated": "2026-08-24T00:30:48Z"
-  },
-  "dayMomentum|XBTUSDT|30m": {
-    "last_close_ms": 1787272200000,
-    "updated": "2026-08-21T00:30:46Z"
   },
   "dayMomentum|XRPUSDT|1h": {
     "last_close_ms": 1787875200000,
