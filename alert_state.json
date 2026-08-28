@@ -1,7 +1,7 @@
 {
   "bot4h|4h": {
-    "last_close_ms": 1787904000000,
-    "updated": "2026-08-28T08:00:54Z"
+    "last_close_ms": 1787918400000,
+    "updated": "2026-08-28T12:01:02Z"
   },
   "custom|SOLUSDT|1h": {
     "last_close_ms": 1787468400000,
@@ -24,12 +24,12 @@
     "updated": "2026-08-25T18:00:56Z"
   },
   "dayMomentum|ETHUSDT|1h": {
-    "last_close_ms": 1787914800000,
-    "updated": "2026-08-28T11:01:03Z"
+    "last_close_ms": 1787918400000,
+    "updated": "2026-08-28T12:01:05Z"
   },
   "dayMomentum|ETHUSDT|30m": {
-    "last_close_ms": 1787916600000,
-    "updated": "2026-08-28T11:30:45Z"
+    "last_close_ms": 1787918400000,
+    "updated": "2026-08-28T12:01:05Z"
   },
   "dayMomentum|SOLUSDT|1h": {
     "last_close_ms": 1787529600000,
