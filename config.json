@@ -1,13 +1,4 @@
 {
-  "dayMomentum": [
-    {
-      "pair": "ETHUSDT",
-      "name": "ETH",
-      "timeframes": [
-        "30m",
-        "1h"
-      ]
-    }
-  ],
+  "dayMomentum": [],
   "custom": []
 }
