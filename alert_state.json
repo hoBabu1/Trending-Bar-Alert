@@ -3,29 +3,21 @@
     "last_close_ms": 1788062400000,
     "updated": "2026-08-30T04:00:56Z"
   },
-  "custom|SOLUSDT|1h": {
-    "last_close_ms": 1787468400000,
-    "updated": "2026-08-23T07:01:03Z"
-  },
-  "custom|SOLUSDT|30m": {
-    "last_close_ms": 1787468400000,
-    "updated": "2026-08-23T07:01:03Z"
-  },
   "dayMomentum|AVAXUSD|1h": {
     "last_close_ms": 1788073200000,
     "updated": "2026-08-30T07:00:56Z"
   },
   "dayMomentum|AVAXUSD|30m": {
-    "last_close_ms": 1788073200000,
-    "updated": "2026-08-30T07:00:56Z"
+    "last_close_ms": 1788075000000,
+    "updated": "2026-08-30T07:30:47Z"
   },
   "dayMomentum|BNBUSDT|1h": {
     "last_close_ms": 1788073200000,
     "updated": "2026-08-30T07:00:56Z"
   },
   "dayMomentum|BNBUSDT|30m": {
-    "last_close_ms": 1788073200000,
-    "updated": "2026-08-30T07:00:56Z"
+    "last_close_ms": 1788075000000,
+    "updated": "2026-08-30T07:30:47Z"
   },
   "dayMomentum|ETHUSDT|1h": {
     "last_close_ms": 1787961600000,
