@@ -1,21 +1,4 @@
 {
-  "dayMomentum": [
-    {
-      "pair": "BNBUSDT",
-      "name": "BNB",
-      "timeframes": [
-        "30m",
-        "1h"
-      ]
-    },
-    {
-      "pair": "AVAXUSD",
-      "name": "AVAX",
-      "timeframes": [
-        "30m",
-        "1h"
-      ]
-    }
-  ],
+  "dayMomentum": [],
   "custom": []
 }
