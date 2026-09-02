@@ -1,4 +1,13 @@
 {
-  "dayMomentum": [],
+  "dayMomentum": [
+    {
+      "pair": "AVAXUSD",
+      "name": "AVAX",
+      "timeframes": [
+        "30m",
+        "1h"
+      ]
+    }
+  ],
   "custom": []
 }
