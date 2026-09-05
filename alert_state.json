@@ -8,8 +8,8 @@
     "updated": "2026-09-05T00:01:12Z"
   },
   "dayMomentum|AVAXUSD|30m": {
-    "last_close_ms": 1788566400000,
-    "updated": "2026-09-05T00:01:12Z"
+    "last_close_ms": 1788568200000,
+    "updated": "2026-09-05T00:31:00Z"
   },
   "dayMomentum|BNBUSDT|1h": {
     "last_close_ms": 1788141600000,
@@ -18,9 +18,5 @@
   "dayMomentum|BNBUSDT|30m": {
     "last_close_ms": 1788143400000,
     "updated": "2026-08-31T02:30:52Z"
-  },
-  "dayMomentum|ETHUSDT|30m": {
-    "last_close_ms": 1787963400000,
-    "updated": "2026-08-29T00:30:47Z"
   }
 }
