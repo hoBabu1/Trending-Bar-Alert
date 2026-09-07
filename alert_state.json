@@ -1,7 +1,7 @@
 {
   "bot4h|4h": {
-    "last_close_ms": 1788782400000,
-    "updated": "2026-09-07T12:01:10Z"
+    "last_close_ms": 1788796800000,
+    "updated": "2026-09-07T16:01:09Z"
   },
   "dayMomentum|AVAXUSD|1h": {
     "last_close_ms": 1788782400000,
@@ -12,11 +12,11 @@
     "updated": "2026-09-07T12:01:14Z"
   },
   "dayMomentum|ETHUSDT|1h": {
-    "last_close_ms": 1788793200000,
-    "updated": "2026-09-07T15:01:09Z"
+    "last_close_ms": 1788796800000,
+    "updated": "2026-09-07T16:01:12Z"
   },
   "dayMomentum|ETHUSDT|30m": {
-    "last_close_ms": 1788795000000,
-    "updated": "2026-09-07T15:31:02Z"
+    "last_close_ms": 1788796800000,
+    "updated": "2026-09-07T16:01:12Z"
   }
 }
