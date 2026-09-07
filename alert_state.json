@@ -1,14 +1,14 @@
 {
   "bot4h|4h": {
-    "last_close_ms": 1788768000000,
-    "updated": "2026-09-07T08:01:09Z"
+    "last_close_ms": 1788782400000,
+    "updated": "2026-09-07T12:01:10Z"
   },
   "dayMomentum|AVAXUSD|1h": {
-    "last_close_ms": 1788778800000,
-    "updated": "2026-09-07T11:01:10Z"
+    "last_close_ms": 1788782400000,
+    "updated": "2026-09-07T12:01:14Z"
   },
   "dayMomentum|AVAXUSD|30m": {
-    "last_close_ms": 1788780600000,
-    "updated": "2026-09-07T11:30:59Z"
+    "last_close_ms": 1788782400000,
+    "updated": "2026-09-07T12:01:14Z"
   }
 }
