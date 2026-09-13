@@ -1,36 +1,4 @@
 {
-  "dayMomentum": [
-    {
-      "pair": "AVAXUSD",
-      "name": "AVAX",
-      "timeframes": [
-        "30m",
-        "1h"
-      ]
-    },
-    {
-      "pair": "SOLUSDT",
-      "name": "SOL",
-      "timeframes": [
-        "30m",
-        "1h"
-      ]
-    },
-    {
-      "pair": "HYPEUSD",
-      "name": "HYPE",
-      "timeframes": [
-        "30m"
-      ]
-    }
-  ],
-  "custom": [
-    {
-      "pair": "ETHUSDT",
-      "name": "ETH",
-      "timeframes": [
-        "30m"
-      ]
-    }
-  ]
+  "dayMomentum": [],
+  "custom": []
 }
