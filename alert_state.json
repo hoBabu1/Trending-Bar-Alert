@@ -7,10 +7,6 @@
     "last_close_ms": 1789277400000,
     "updated": "2026-09-13T05:31:08Z"
   },
-  "dayMomentum|AVAXUSD|1h": {
-    "last_close_ms": 1789275600000,
-    "updated": "2026-09-13T05:01:16Z"
-  },
   "dayMomentum|AVAXUSD|30m": {
     "last_close_ms": 1789277400000,
     "updated": "2026-09-13T05:31:05Z"
@@ -18,10 +14,6 @@
   "dayMomentum|HYPEUSD|30m": {
     "last_close_ms": 1789277400000,
     "updated": "2026-09-13T05:31:05Z"
-  },
-  "dayMomentum|SOLUSDT|1h": {
-    "last_close_ms": 1789275600000,
-    "updated": "2026-09-13T05:01:16Z"
   },
   "dayMomentum|SOLUSDT|30m": {
     "last_close_ms": 1789277400000,
