@@ -4,35 +4,35 @@
     "updated": "2026-10-02T04:01:10Z"
   },
   "dayMomentum|AVAXUSD|1h": {
-    "last_close_ms": 1790913600000,
-    "updated": "2026-10-02T04:01:17Z"
+    "last_close_ms": 1790917200000,
+    "updated": "2026-10-02T05:01:14Z"
   },
   "dayMomentum|AVAXUSD|30m": {
-    "last_close_ms": 1790915400000,
-    "updated": "2026-10-02T04:30:59Z"
+    "last_close_ms": 1790917200000,
+    "updated": "2026-10-02T05:01:14Z"
   },
   "dayMomentum|BNBUSDT|1h": {
-    "last_close_ms": 1790913600000,
-    "updated": "2026-10-02T04:01:17Z"
+    "last_close_ms": 1790917200000,
+    "updated": "2026-10-02T05:01:14Z"
   },
   "dayMomentum|BNBUSDT|30m": {
-    "last_close_ms": 1790915400000,
-    "updated": "2026-10-02T04:30:59Z"
+    "last_close_ms": 1790917200000,
+    "updated": "2026-10-02T05:01:14Z"
   },
   "dayMomentum|SOLUSDT|1h": {
-    "last_close_ms": 1790913600000,
-    "updated": "2026-10-02T04:01:17Z"
+    "last_close_ms": 1790917200000,
+    "updated": "2026-10-02T05:01:14Z"
   },
   "dayMomentum|SOLUSDT|30m": {
-    "last_close_ms": 1790915400000,
-    "updated": "2026-10-02T04:30:59Z"
+    "last_close_ms": 1790917200000,
+    "updated": "2026-10-02T05:01:14Z"
   },
   "dayMomentum|XRPUSDT|1h": {
-    "last_close_ms": 1790913600000,
-    "updated": "2026-10-02T04:01:17Z"
+    "last_close_ms": 1790917200000,
+    "updated": "2026-10-02T05:01:14Z"
   },
   "dayMomentum|XRPUSDT|30m": {
-    "last_close_ms": 1790915400000,
-    "updated": "2026-10-02T04:30:59Z"
+    "last_close_ms": 1790917200000,
+    "updated": "2026-10-02T05:01:14Z"
   }
 }
