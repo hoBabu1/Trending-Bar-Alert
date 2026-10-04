@@ -12,7 +12,8 @@
       "pair": "HYPEUSD",
       "name": "HYPE",
       "timeframes": [
-        "30m"
+        "30m",
+        "1h"
       ]
     }
   ],
