@@ -20,12 +20,12 @@
     "updated": "2026-10-04T00:01:19Z"
   },
   "dayMomentum|HYPEUSD|1h": {
-    "last_close_ms": 1791439200000,
-    "updated": "2026-10-08T06:01:08Z"
+    "last_close_ms": 1791442800000,
+    "updated": "2026-10-08T07:01:12Z"
   },
   "dayMomentum|HYPEUSD|30m": {
-    "last_close_ms": 1791441000000,
-    "updated": "2026-10-08T06:31:05Z"
+    "last_close_ms": 1791442800000,
+    "updated": "2026-10-08T07:01:12Z"
   },
   "dayMomentum|SOLUSDT|1h": {
     "last_close_ms": 1791072000000,
@@ -36,11 +36,11 @@
     "updated": "2026-10-04T00:01:19Z"
   },
   "dayMomentum|XRPUSDT|1h": {
-    "last_close_ms": 1791439200000,
-    "updated": "2026-10-08T06:01:08Z"
+    "last_close_ms": 1791442800000,
+    "updated": "2026-10-08T07:01:12Z"
   },
   "dayMomentum|XRPUSDT|30m": {
-    "last_close_ms": 1791441000000,
-    "updated": "2026-10-08T06:31:05Z"
+    "last_close_ms": 1791442800000,
+    "updated": "2026-10-08T07:01:12Z"
   }
 }
