@@ -24,8 +24,8 @@
     "updated": "2026-10-09T06:01:14Z"
   },
   "dayMomentum|HYPEUSD|30m": {
-    "last_close_ms": 1791525600000,
-    "updated": "2026-10-09T06:01:14Z"
+    "last_close_ms": 1791527400000,
+    "updated": "2026-10-09T06:30:57Z"
   },
   "dayMomentum|SOLUSDT|1h": {
     "last_close_ms": 1791072000000,
@@ -40,7 +40,7 @@
     "updated": "2026-10-09T06:01:14Z"
   },
   "dayMomentum|XRPUSDT|30m": {
-    "last_close_ms": 1791525600000,
-    "updated": "2026-10-09T06:01:14Z"
+    "last_close_ms": 1791527400000,
+    "updated": "2026-10-09T06:30:57Z"
   }
 }
